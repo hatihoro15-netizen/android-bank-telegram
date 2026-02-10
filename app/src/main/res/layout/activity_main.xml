@@ -1,0 +1,447 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F5F5F5">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="은행 알림 텔레그램 전송"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:textColor="#1A237E"
+            android:gravity="center"
+            android:layout_marginBottom="16dp" />
+
+        <!-- 서비스 상태 -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="4dp"
+            app:strokeWidth="0dp">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="14dp">
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="서비스 상태" android:textSize="15sp" android:textStyle="bold" android:layout_marginBottom="6dp" />
+                <TextView android:id="@+id/tvServiceStatus" android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="확인 중..." android:textSize="14sp" android:layout_marginBottom="6dp" />
+                <TextView android:id="@+id/tvPendingCount" android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="대기 중인 알림 없음" android:textSize="13sp" android:textColor="#F57C00" android:layout_marginBottom="6dp" />
+                <Button android:id="@+id/btnProcessPending" android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="대기 알림 재전송" android:layout_marginBottom="6dp" android:visibility="gone"
+                    style="@style/Widget.Material3.Button.TonalButton" />
+                <Button android:id="@+id/btnEnableService" android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="알림 접근 권한 설정" android:backgroundTint="#1A237E" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 감지 방식 설정 -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="4dp"
+            app:strokeWidth="0dp">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="14dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="3dp">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="📡" android:textSize="18sp" android:layout_marginEnd="8dp" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="감지 방식 설정" android:textSize="16sp" android:textStyle="bold" android:textColor="#1A237E" />
+                </LinearLayout>
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="SMS와 푸시 알림을 동시에 켜면 이중 감지 모드로 작동합니다" android:textSize="11sp" android:textColor="#757575" android:layout_marginBottom="10dp" />
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/switchSmsDetection" android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="SMS 문자 감지" android:textSize="14sp" android:layout_marginBottom="4dp" />
+                <TextView android:id="@+id/tvSmsStatus" android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="SMS 감지: 꺼짐" android:textSize="12sp" android:textColor="#9E9E9E" android:layout_marginBottom="8dp" android:paddingStart="4dp" />
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/switchPushDetection" android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="푸시 알림 감지" android:textSize="14sp" android:checked="true" android:layout_marginBottom="4dp" />
+                <TextView android:id="@+id/tvPushStatus" android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="알림 감지: 확인 중..." android:textSize="12sp" android:textColor="#9E9E9E" android:layout_marginBottom="8dp" android:paddingStart="4dp" />
+
+                <Button android:id="@+id/btnRequestSmsPermission" android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="SMS 권한 요청" android:visibility="gone"
+                    style="@style/Widget.Material3.Button.TonalButton" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 디바이스 설정 -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="4dp"
+            app:strokeWidth="0dp">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="14dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="8dp">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="📱" android:textSize="18sp" android:layout_marginEnd="8dp" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="디바이스 설정" android:textSize="16sp" android:textStyle="bold" android:textColor="#1A237E" />
+                </LinearLayout>
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="멀티 디바이스 사용 시 번호와 이름을 설정하세요" android:textSize="11sp" android:textColor="#757575" android:layout_marginBottom="8dp" />
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="6dp">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="디바이스 번호: " android:textSize="14sp" />
+                    <Spinner android:id="@+id/spinnerDeviceNumber"
+                        android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                </LinearLayout>
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:hint="디바이스 이름 (예: 김사장폰)">
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etDeviceName" android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:inputType="text" android:textSize="13sp" />
+                </com.google.android.material.textfield.TextInputLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 알림 감지 설정 -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="4dp"
+            app:strokeWidth="0dp">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="14dp">
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="알림 감지 설정" android:textSize="15sp" android:textStyle="bold" android:layout_marginBottom="10dp" />
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/switchDeposit" android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="입금 알림 감지" android:textSize="14sp" android:checked="true" android:layout_marginBottom="6dp" />
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/switchWithdrawal" android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="출금 알림 감지" android:textSize="14sp" android:checked="true" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 내 계좌 관리 -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="4dp"
+            app:strokeWidth="0dp">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="14dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="3dp">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="🔄" android:textSize="18sp" android:layout_marginEnd="8dp" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="내 계좌 관리" android:textSize="16sp" android:textStyle="bold" android:textColor="#1A237E" />
+                </LinearLayout>
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="등록된 계좌/이름으로 들어오는 거래는 내부거래로 처리되어 텔레그램 전송에서 제외됩니다" android:textSize="11sp" android:textColor="#757575" android:layout_marginBottom="10dp" />
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/switchExcludeInternal" android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="내부 거래 제외" android:textSize="14sp" android:layout_marginBottom="10dp" />
+
+                <LinearLayout android:id="@+id/containerMyAccounts"
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:background="@drawable/methods_container_bg"
+                    android:padding="4dp" />
+
+                <Button android:id="@+id/btnAddAccount"
+                    android:layout_width="match_parent" android:layout_height="44dp"
+                    android:text="＋  내 계좌 추가" android:textSize="13sp"
+                    android:layout_marginTop="10dp"
+                    style="@style/Widget.Material3.Button.TonalButton" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 입금 수신 방식 -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="4dp"
+            app:strokeWidth="0dp">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="3dp">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="💰" android:textSize="18sp" android:layout_marginEnd="8dp" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="입금 수신 방식" android:textSize="16sp" android:textStyle="bold" android:textColor="#1A237E" />
+                </LinearLayout>
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="감지할 입금 방식을 선택하세요" android:textSize="11sp" android:textColor="#757575" android:layout_marginBottom="10dp" />
+                <LinearLayout android:id="@+id/containerDepositMethods"
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:background="@drawable/methods_container_bg"
+                    android:padding="4dp" />
+                <Button android:id="@+id/btnAddDepositMethod"
+                    android:layout_width="match_parent" android:layout_height="44dp"
+                    android:text="＋  입금 방식 추가" android:textSize="13sp"
+                    android:layout_marginTop="10dp"
+                    style="@style/Widget.Material3.Button.TonalButton" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 출금 수신 방식 -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="4dp"
+            app:strokeWidth="0dp">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="3dp">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="💸" android:textSize="18sp" android:layout_marginEnd="8dp" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="출금 수신 방식" android:textSize="16sp" android:textStyle="bold" android:textColor="#1A237E" />
+                </LinearLayout>
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="감지할 출금 방식을 선택하세요" android:textSize="11sp" android:textColor="#757575" android:layout_marginBottom="10dp" />
+                <LinearLayout android:id="@+id/containerWithdrawalMethods"
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:background="@drawable/methods_container_bg"
+                    android:padding="4dp" />
+                <Button android:id="@+id/btnAddWithdrawalMethod"
+                    android:layout_width="match_parent" android:layout_height="44dp"
+                    android:text="＋  출금 방식 추가" android:textSize="13sp"
+                    android:layout_marginTop="10dp"
+                    style="@style/Widget.Material3.Button.TonalButton" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 텔레그램 설정 -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="4dp"
+            app:strokeWidth="0dp">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="14dp">
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="텔레그램 설정" android:textSize="15sp" android:textStyle="bold" android:layout_marginBottom="10dp" />
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:layout_marginBottom="6dp" android:hint="Bot Token (공용)">
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etBotToken" android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:inputType="text" android:textSize="13sp" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:layout_marginBottom="6dp" android:hint="입금 Chat ID">
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etDepositChatId" android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:inputType="text" android:textSize="13sp" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:layout_marginBottom="10dp" android:hint="출금 Chat ID">
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etWithdrawalChatId" android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:inputType="text" android:textSize="13sp" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <Button android:id="@+id/btnSave" android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="설정 저장" android:backgroundTint="#1A237E" android:layout_marginBottom="6dp" />
+
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+                    <Button android:id="@+id/btnTestDeposit" android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1" android:text="입금 테스트" android:layout_marginEnd="4dp"
+                        style="@style/Widget.Material3.Button.OutlinedButton" />
+                    <Button android:id="@+id/btnTestWithdrawal" android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1" android:text="출금 테스트" android:layout_marginStart="4dp"
+                        style="@style/Widget.Material3.Button.OutlinedButton" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 테스트 알림 -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="4dp"
+            app:strokeWidth="0dp">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="14dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="3dp">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="🧪" android:textSize="18sp" android:layout_marginEnd="8dp" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="테스트 알림 보내기" android:textSize="16sp" android:textStyle="bold" android:textColor="#1A237E" />
+                </LinearLayout>
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="가짜 알림을 생성하여 실제 텔레그램 전송까지 테스트합니다" android:textSize="11sp" android:textColor="#757575" android:layout_marginBottom="10dp" />
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="푸시 알림 테스트" android:textSize="12sp" android:textColor="#616161" android:layout_marginBottom="4dp" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="horizontal" android:layout_marginBottom="4dp">
+                    <Button android:id="@+id/btnTestNotifyDeposit" android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1" android:text="💰 입금" android:textSize="12sp" android:layout_marginEnd="4dp"
+                        style="@style/Widget.Material3.Button.TonalButton" />
+                    <Button android:id="@+id/btnTestNotifyWithdrawal" android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1" android:text="💸 출금" android:textSize="12sp" android:layout_marginStart="4dp"
+                        style="@style/Widget.Material3.Button.TonalButton" />
+                </LinearLayout>
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="horizontal" android:layout_marginBottom="8dp">
+                    <Button android:id="@+id/btnTestNotifyDepositFailed" android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1" android:text="❌ 입금실패" android:textSize="12sp" android:layout_marginEnd="4dp"
+                        style="@style/Widget.Material3.Button.TonalButton" />
+                    <Button android:id="@+id/btnTestNotifyWithdrawalFailed" android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1" android:text="❌ 출금실패" android:textSize="12sp" android:layout_marginStart="4dp"
+                        style="@style/Widget.Material3.Button.TonalButton" />
+                </LinearLayout>
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="SMS 테스트" android:textSize="12sp" android:textColor="#616161" android:layout_marginBottom="4dp" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="horizontal" android:layout_marginBottom="6dp">
+                    <Button android:id="@+id/btnTestSmsDeposit" android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1" android:text="📱 SMS 입금" android:textSize="12sp" android:layout_marginEnd="4dp"
+                        style="@style/Widget.Material3.Button.TonalButton" />
+                    <Button android:id="@+id/btnTestSmsWithdrawal" android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1" android:text="📱 SMS 출금" android:textSize="12sp" android:layout_marginStart="4dp"
+                        style="@style/Widget.Material3.Button.TonalButton" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 정산 설정 -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="4dp"
+            app:strokeWidth="0dp">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="14dp">
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="일일 정산 설정" android:textSize="15sp" android:textStyle="bold" android:layout_marginBottom="8dp" />
+
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginBottom="4dp">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="정산 시간:  " android:textSize="14sp" />
+                    <TextView android:id="@+id/tvSettlementTime" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="23:30" android:textSize="18sp" android:textStyle="bold" android:textColor="#1A237E" />
+                    <Button android:id="@+id/btnChangeSettlementTime" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="변경" android:layout_marginStart="12dp"
+                        style="@style/Widget.Material3.Button.TonalButton" />
+                </LinearLayout>
+
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="* 정산 데이터 초기화: 매일 23:55 고정\n* 입금 정산 → 입금 채팅방 전송\n* 출금 정산 → 출금 채팅방 전송\n* 정상/실패/취소 분리 표시\n* 디바이스별 구분 표시"
+                    android:textSize="11sp" android:textColor="#757575" android:lineSpacingMultiplier="1.3" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 기록 보기 -->
+        <Button android:id="@+id/btnViewLogs" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="전체 로그 보기" android:backgroundTint="#37474F" android:layout_marginBottom="12dp" />
+
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="* SMS + 푸시 알림 이중 감지로 은행 거래를 감지합니다.\n* 동일 거래 중복 전송 방지 (30초 이내 동일 금액+이름)\n* 입금/출금을 각각 다른 채팅방으로 분리 전송합니다.\n* 전송 실패 시 최대 3회 자동 재시도합니다.\n* 5분마다 서비스 생존 체크를 수행합니다.\n* 로그 보관: 30일"
+            android:textSize="11sp" android:textColor="#757575" android:lineSpacingMultiplier="1.3" />
+
+    </LinearLayout>
+</ScrollView>
