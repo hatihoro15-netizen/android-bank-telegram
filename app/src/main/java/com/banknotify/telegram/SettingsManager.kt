@@ -142,7 +142,6 @@ class SettingsManager(context: Context) {
             PaymentMethodItem("카카오페이"),
             PaymentMethodItem("네이버페이"),
             PaymentMethodItem("제로페이"),
-            PaymentMethodItem("페이코"),
             PaymentMethodItem("토스"),
             PaymentMethodItem("연락처송금"),
             PaymentMethodItem("체크/카드"),
@@ -153,6 +152,7 @@ class SettingsManager(context: Context) {
             PaymentMethodItem("계좌출금"),
             PaymentMethodItem("카카오페이"),
             PaymentMethodItem("네이버페이"),
+            PaymentMethodItem("제로페이"),
             PaymentMethodItem("페이코"),
             PaymentMethodItem("토스"),
             PaymentMethodItem("카드결제"),
@@ -213,27 +213,49 @@ class SettingsManager(context: Context) {
         }
 
         fun isInternalTransfer(notification: BankNotification, myAccounts: List<MyAccountItem>): Boolean {
-            if (myAccounts.isEmpty()) return false
+            if (myAccounts.isEmpty()) {
+                android.util.Log.d("InternalFilter", "myAccounts is empty, skipping")
+                return false
+            }
             val senderName = notification.senderName ?: ""
             val accountInfo = notification.accountInfo ?: ""
             val originalText = notification.originalText
 
+            android.util.Log.d("InternalFilter", "Checking: bank=${notification.bankName}, sender=$senderName, amount=${notification.amount}, account=$accountInfo, accounts=${myAccounts.size}")
+
+            val hasDetailedInfo = (notification.amount != null || senderName.isNotBlank())
+
             return myAccounts.any { account ->
-                // 은행명 매칭
-                (account.bankName.isNotBlank() && notification.bankName == account.bankName) ||
-                // 이름 매칭
-                (account.accountName.isNotBlank() && senderName.isNotBlank() &&
-                 senderName.contains(account.accountName)) ||
-                // 계좌번호 매칭
-                (account.accountNumber.isNotBlank() && accountInfo.isNotBlank() &&
-                 accountInfo.replace("-", "").replace("*", "").contains(
-                     account.accountNumber.replace("-", "").replace("*", ""))) ||
-                // 원본 텍스트에서 이름/계좌번호 검색
-                (account.accountName.isNotBlank() &&
-                 originalText.contains(account.accountName)) ||
-                (account.accountNumber.isNotBlank() &&
-                 originalText.replace("-", "").replace("*", "").contains(
-                     account.accountNumber.replace("-", "").replace("*", "")))
+                val hasBankFilter = account.bankName.isNotBlank()
+                val bankMatches = hasBankFilter &&
+                    notification.bankName.trim() == account.bankName.trim()
+
+                // 1. 정보 없는 일반 알림 + 은행 일치 → 차단 (예: "돈이 입금됐어요")
+                val genericBankMatch = hasBankFilter && bankMatches && !hasDetailedInfo
+
+                // 2. 이름 매칭 (은행 등록 시 은행+이름 조합, 동명이인 구분)
+                val nameFound = account.accountName.isNotBlank() && senderName.isNotBlank() &&
+                    senderName.contains(account.accountName)
+                val nameMatch = if (hasBankFilter) nameFound && bankMatches else nameFound
+
+                // 3. 계좌번호 매칭 (가장 정확, 단독 매칭)
+                val accountMatch = account.accountNumber.isNotBlank() && accountInfo.isNotBlank() &&
+                    accountInfo.replace("-", "").replace("*", "").contains(
+                        account.accountNumber.replace("-", "").replace("*", ""))
+
+                // 4. 원본 텍스트에서 이름 검색 (은행 조합)
+                val textNameFound = account.accountName.isNotBlank() &&
+                    originalText.contains(account.accountName)
+                val textNameMatch = if (hasBankFilter) textNameFound && bankMatches else textNameFound
+
+                // 5. 원본 텍스트에서 계좌번호 검색 (단독 매칭)
+                val textAccountMatch = account.accountNumber.isNotBlank() &&
+                    originalText.replace("-", "").replace("*", "").contains(
+                        account.accountNumber.replace("-", "").replace("*", ""))
+
+                val matched = genericBankMatch || nameMatch || accountMatch || textNameMatch || textAccountMatch
+                android.util.Log.d("InternalFilter", "Account[bank=${account.bankName},name=${account.accountName}] → generic=$genericBankMatch, name=$nameMatch, account=$accountMatch, textName=$textNameMatch, textAccount=$textAccountMatch → $matched")
+                matched
             }
         }
     }

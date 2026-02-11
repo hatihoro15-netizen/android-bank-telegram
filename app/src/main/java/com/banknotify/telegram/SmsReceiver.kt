@@ -114,6 +114,7 @@ class SmsReceiver : BroadcastReceiver() {
         }
 
         // 내부거래 필터링
+        Log.d(TAG, "Internal filter check: toggle=${settings.excludeInternalTransfers}, accounts=${settings.myAccounts.size}")
         if (settings.excludeInternalTransfers &&
             SettingsManager.isInternalTransfer(notification, settings.myAccounts)) {
             val internalNotification = notification.copy(transactionStatus = TransactionStatus.INTERNAL)

@@ -63,11 +63,13 @@ class BankNotificationParser {
         "com.nhn.android.search" to "네이버",
         "com.nhnent.payapp" to "페이코",
         "com.payco.app" to "페이코",
-        "com.kftc.zeropay.consumer" to "제로페이"
+        "com.kftc.zeropay.consumer" to "제로페이",
+        "kr.or.zeropay.zip" to "제로페이"
     )
 
     private val depositKeywords = listOf(
         "받기완료", "받기 완료", "송금받기", "이체입금", "입금완료", "입금알림",
+        "받아주세요", "보냈어요", "보냈습니다",
         "입금", "충전", "받았"
     )
 
@@ -108,7 +110,14 @@ class BankNotificationParser {
         "com.naverfin.payapp" to "네이버페이",
         "com.nhnent.payapp" to "페이코",
         "com.payco.app" to "페이코",
-        "com.kftc.zeropay.consumer" to "제로페이"
+        "com.kftc.zeropay.consumer" to "제로페이",
+        "kr.or.zeropay.zip" to "제로페이"
+    )
+
+    // 가맹점/결제단말 앱: "결제완료"가 입금(매출)을 의미하는 패키지
+    private val merchantPackages = setOf(
+        "com.kftc.zeropay.consumer",
+        "kr.or.zeropay.zip"
     )
 
     private val amountPattern = Regex("""[\d,]+\s*원""")
@@ -126,19 +135,27 @@ class BankNotificationParser {
         return hasTransactionKw
     }
 
-    fun getIgnoreReason(title: String?, text: String?): String? {
+    fun getIgnoreReason(title: String?, text: String?, packageName: String = ""): String? {
         val combined = "${title.orEmpty()} ${text.orEmpty()}"
         val matched = excludeKeywords.firstOrNull { combined.contains(it) }
         if (matched != null) return "제외 키워드: $matched"
+        val isMerchant = packageName in merchantPackages
+        val hasMerchantKeyword = isMerchant && combined.contains("결제완료")
         if (!depositKeywords.any { combined.contains(it) } &&
-            !withdrawalKeywords.any { combined.contains(it) }) {
+            !withdrawalKeywords.any { combined.contains(it) } &&
+            !hasMerchantKeyword) {
             return "거래 키워드 없음"
         }
         return null
     }
 
-    fun detectTransactionType(title: String?, text: String?): TransactionType {
+    fun detectTransactionType(title: String?, text: String?, packageName: String = ""): TransactionType {
         val combined = "${title.orEmpty()} ${text.orEmpty()}"
+        // 가맹점 앱: "결제완료" → 입금(매출), "환불" → 출금
+        if (packageName in merchantPackages) {
+            if (combined.contains("결제완료")) return TransactionType.DEPOSIT
+            if (combined.contains("환불")) return TransactionType.WITHDRAWAL
+        }
         if (depositKeywords.any { combined.contains(it) }) return TransactionType.DEPOSIT
         if (withdrawalKeywords.any { combined.contains(it) }) return TransactionType.WITHDRAWAL
         return TransactionType.UNKNOWN

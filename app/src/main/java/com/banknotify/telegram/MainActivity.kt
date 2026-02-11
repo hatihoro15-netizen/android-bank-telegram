@@ -88,6 +88,9 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnAddAccount).setOnClickListener {
             showAddAccountDialog()
         }
+        findViewById<Button>(R.id.btnDiagnoseFilter).setOnClickListener {
+            showFilterDiagnostic()
+        }
 
         // 감지 방식 토글
         switchSmsDetection.setOnCheckedChangeListener { _, checked ->
@@ -111,6 +114,20 @@ class MainActivity : AppCompatActivity() {
         val deviceNumbers = (1..100).map { "${it}번" }
         spinnerDeviceNumber.adapter = ArrayAdapter(this,
             android.R.layout.simple_spinner_dropdown_item, deviceNumbers)
+        spinnerDeviceNumber.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: android.view.View?, position: Int, id: Long) {
+                settings.deviceNumber = position + 1
+            }
+            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+        }
+
+        etDeviceName.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: android.text.Editable?) {
+                settings.deviceName = s?.toString()?.trim() ?: ""
+            }
+        })
 
         findViewById<Button>(R.id.btnEnableService).setOnClickListener {
             startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
@@ -703,8 +720,88 @@ class MainActivity : AppCompatActivity() {
                 val current = settings.myAccounts.toMutableList()
                 current.add(MyAccountItem(accountNumber = number, accountName = name, bankName = selectedBank, memo = memo))
                 settings.myAccounts = current
+                // 계좌 추가 시 자동으로 내부거래 제외 토글 ON
+                if (!settings.excludeInternalTransfers) {
+                    settings.excludeInternalTransfers = true
+                    switchExcludeInternal.isChecked = true
+                }
                 buildAccountViews()
                 Toast.makeText(this, "추가되었습니다", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("취소", null)
+            .show()
+    }
+
+    private fun showEditAccountDialog(index: Int, account: MyAccountItem) {
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dpToPx(16), dpToPx(12), dpToPx(16), dpToPx(4))
+        }
+
+        val bankLabel = TextView(this).apply {
+            text = "은행/앱"
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+            setTextColor(Color.parseColor("#616161"))
+            setPadding(dpToPx(4), dpToPx(4), 0, dpToPx(2))
+        }
+        val spinnerBank = Spinner(this).apply {
+            adapter = ArrayAdapter(this@MainActivity,
+                android.R.layout.simple_spinner_dropdown_item, bankList)
+        }
+        val bankIndex = bankList.indexOf(account.bankName)
+        spinnerBank.setSelection(if (bankIndex >= 0) bankIndex else 0)
+
+        val etName = EditText(this).apply {
+            hint = "이름 (예: 김철수)"
+            setText(account.accountName)
+            setPadding(dpToPx(12), dpToPx(10), dpToPx(12), dpToPx(10))
+        }
+        val etNumber = EditText(this).apply {
+            hint = "계좌번호 (예: 110-123-456789)"
+            setText(account.accountNumber)
+            setPadding(dpToPx(12), dpToPx(10), dpToPx(12), dpToPx(10))
+        }
+        val etMemo = EditText(this).apply {
+            hint = "메모 (선택)"
+            setText(account.memo)
+            setPadding(dpToPx(12), dpToPx(10), dpToPx(12), dpToPx(10))
+        }
+        layout.addView(bankLabel)
+        layout.addView(spinnerBank)
+        layout.addView(etName)
+        layout.addView(etNumber)
+        layout.addView(etMemo)
+
+        AlertDialog.Builder(this)
+            .setTitle("계좌 수정")
+            .setView(layout)
+            .setPositiveButton("저장") { _, _ ->
+                val selectedBank = if (spinnerBank.selectedItemPosition == 0) "" else bankList[spinnerBank.selectedItemPosition]
+                val name = etName.text.toString().trim()
+                val number = etNumber.text.toString().trim()
+                val memo = etMemo.text.toString().trim()
+                if (name.isBlank() && number.isBlank() && selectedBank.isBlank()) {
+                    Toast.makeText(this, "은행, 이름, 계좌번호 중 하나는 입력해주세요", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+                val current = settings.myAccounts.toMutableList()
+                current[index] = MyAccountItem(accountNumber = number, accountName = name, bankName = selectedBank, memo = memo)
+                settings.myAccounts = current
+                buildAccountViews()
+                Toast.makeText(this, "수정되었습니다", Toast.LENGTH_SHORT).show()
+            }
+            .setNeutralButton("삭제") { _, _ ->
+                AlertDialog.Builder(this)
+                    .setTitle("삭제 확인")
+                    .setMessage("'${account.accountName}' 계좌를 삭제하시겠습니까?")
+                    .setPositiveButton("삭제") { _, _ ->
+                        val current = settings.myAccounts.toMutableList()
+                        current.removeAt(index)
+                        settings.myAccounts = current
+                        buildAccountViews()
+                    }
+                    .setNegativeButton("취소", null)
+                    .show()
             }
             .setNegativeButton("취소", null)
             .show()
@@ -739,6 +836,12 @@ class MainActivity : AppCompatActivity() {
             val infoLayout = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                isClickable = true
+                isFocusable = true
+                setBackgroundResource(android.R.drawable.list_selector_background)
+                setOnClickListener {
+                    showEditAccountDialog(index, account)
+                }
             }
 
             if (account.bankName.isNotBlank()) {
@@ -807,6 +910,98 @@ class MainActivity : AppCompatActivity() {
                 containerMyAccounts.addView(createDivider())
             }
         }
+    }
+
+    private fun showFilterDiagnostic() {
+        val toggle = settings.excludeInternalTransfers
+        val accounts = settings.myAccounts
+        val rawJson = getSharedPreferences("bank_notify_settings", MODE_PRIVATE)
+            .getString("my_accounts", "(없음)")
+
+        val sb = StringBuilder()
+        sb.appendLine("=== 내부거래 필터 진단 ===\n")
+        sb.appendLine("토글 상태: ${if (toggle) "ON" else "OFF"}")
+        sb.appendLine("등록 계좌 수: ${accounts.size}개\n")
+
+        if (accounts.isEmpty()) {
+            sb.appendLine("등록된 계좌가 없습니다!")
+        } else {
+            accounts.forEachIndexed { i, acc ->
+                sb.appendLine("[${ i + 1}] 은행='${acc.bankName}' / 이름='${acc.accountName}' / 계좌='${acc.accountNumber}' / 메모='${acc.memo}'")
+            }
+        }
+
+        // 시뮬레이션 테스트
+        sb.appendLine("\n--- 시뮬레이션 테스트 ---")
+
+        val testAcc = accounts.firstOrNull { it.accountName.isNotBlank() }
+        val testName = testAcc?.accountName ?: "김철수"
+        val testBank = testAcc?.bankName ?: "토스"
+        val otherBank = if (testBank == "토스") "국민은행" else "토스"
+
+        // 테스트1: 일반 알림 (정보 없음) + 은행 일치 → 차단
+        val test1 = BankNotification(
+            bankName = testBank, amount = null, senderName = null, accountInfo = null,
+            originalText = "내 입출금통장에 돈이 입금됐어요",
+            packageName = "viva.republica.toss",
+            transactionType = TransactionType.DEPOSIT,
+            transactionStatus = TransactionStatus.NORMAL, paymentMethod = "토스"
+        )
+        val r1 = SettingsManager.isInternalTransfer(test1, accounts)
+        sb.appendLine("1) $testBank 일반알림 (정보없음) → ${if (r1) "차단 O" else "통과 X"}")
+
+        // 테스트2: 같은 은행 + 같은 이름 → 차단
+        val test2 = BankNotification(
+            bankName = testBank, amount = "50,000원", senderName = testName, accountInfo = null,
+            originalText = "$testBank 입금 50,000원 $testName",
+            packageName = "viva.republica.toss",
+            transactionType = TransactionType.DEPOSIT,
+            transactionStatus = TransactionStatus.NORMAL, paymentMethod = "토스"
+        )
+        val r2 = SettingsManager.isInternalTransfer(test2, accounts)
+        sb.appendLine("2) $testBank + '$testName' → ${if (r2) "차단 O" else "통과 (미등록)"}")
+
+        // 테스트3: 같은 은행 + 다른 사람 → 통과
+        val test3 = BankNotification(
+            bankName = testBank, amount = "50,000원", senderName = "홍길동", accountInfo = null,
+            originalText = "$testBank 입금 50,000원 홍길동",
+            packageName = "viva.republica.toss",
+            transactionType = TransactionType.DEPOSIT,
+            transactionStatus = TransactionStatus.NORMAL, paymentMethod = "토스"
+        )
+        val r3 = SettingsManager.isInternalTransfer(test3, accounts)
+        sb.appendLine("3) $testBank + '홍길동' → ${if (r3) "차단 X" else "통과 O"}")
+
+        // 테스트4: 다른 은행 + 같은 이름 (동명이인) → 통과
+        val test4 = BankNotification(
+            bankName = otherBank, amount = "50,000원", senderName = testName, accountInfo = null,
+            originalText = "$otherBank 입금 50,000원 $testName",
+            packageName = "com.kbstar.kbbank",
+            transactionType = TransactionType.DEPOSIT,
+            transactionStatus = TransactionStatus.NORMAL, paymentMethod = "계좌이체"
+        )
+        val r4 = SettingsManager.isInternalTransfer(test4, accounts)
+        sb.appendLine("4) $otherBank + '$testName' (동명이인) → ${if (r4) "차단 X" else "통과 O"}")
+
+        if (!toggle) {
+            sb.appendLine("\n결과: 토글이 꺼져있어 필터 미작동!")
+        } else {
+            sb.appendLine("\n* 정보 없는 알림 → 은행명으로 차단")
+            sb.appendLine("* 정보 있는 알림 → 은행+이름으로 차단")
+            sb.appendLine("* 계좌번호 등록 시 가장 정확")
+        }
+
+        sb.appendLine("\n--- 저장된 원본 JSON ---")
+        sb.appendLine(rawJson)
+
+        sb.appendLine("\n--- 최근 수신 알림 (패키지명) ---")
+        sb.appendLine(NotificationListener.getRecentPackages(this))
+
+        AlertDialog.Builder(this)
+            .setTitle("내부거래 필터 진단")
+            .setMessage(sb.toString())
+            .setPositiveButton("확인", null)
+            .show()
     }
 
     // === SMS 감지 관련 ===

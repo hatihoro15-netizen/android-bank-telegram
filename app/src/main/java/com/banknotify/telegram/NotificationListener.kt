@@ -31,15 +31,26 @@ class NotificationListener : NotificationListenerService() {
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         val packageName = sbn.packageName ?: return
 
+        // 모든 알림 패키지명 기록 (디버그용)
+        val extras = sbn.notification.extras
+        val rawTitle = extras.getCharSequence("android.title")?.toString() ?: ""
+        val rawText = extras.getCharSequence("android.text")?.toString() ?: ""
+        saveRecentPackage(packageName, rawTitle, rawText)
+
         // 푸시 알림 감지 꺼져 있으면 무시
         if (!settings.pushEnabled) return
 
-        if (!parser.isMonitoredApp(packageName)) return
+        if (!parser.isMonitoredApp(packageName)) {
+            Log.d(TAG, "SKIP unmonitored: $packageName | $rawTitle | $rawText")
+            return
+        }
 
-        val extras = sbn.notification.extras
-        val title = extras.getCharSequence("android.title")?.toString()
+        val title = rawTitle.ifBlank { null }
         val text = extras.getCharSequence("android.text")?.toString()
         val bigText = extras.getCharSequence("android.bigText")?.toString()
+
+        Log.d(TAG, "=== NOTIFICATION FROM: $packageName ===")
+        Log.d(TAG, "  title='$title' text='$text' bigText='$bigText'")
 
         val notificationText = bigText ?: text
         if (notificationText.isNullOrBlank()) return
@@ -49,7 +60,8 @@ class NotificationListener : NotificationListenerService() {
         val deviceLabel = settings.getDeviceLabel()
 
         // 무시되는 알림 체크 (광고/이벤트 등)
-        val ignoreReason = parser.getIgnoreReason(title, notificationText)
+        val ignoreReason = parser.getIgnoreReason(title, notificationText, packageName)
+        Log.d(TAG, "  ignoreReason=$ignoreReason")
         if (ignoreReason != null) {
             val bankName = parser.getBankName(packageName)
             logDb.insertIgnoredLog(
@@ -64,10 +76,14 @@ class NotificationListener : NotificationListenerService() {
             return
         }
 
-        val transactionType = parser.detectTransactionType(title, notificationText)
+        val transactionType = parser.detectTransactionType(title, notificationText, packageName)
+        Log.d(TAG, "  transactionType=${transactionType.label}")
 
         // UNKNOWN인데 transaction notification 통과 → 일단 무시하지 않고 진행
-        if (transactionType == TransactionType.UNKNOWN) return
+        if (transactionType == TransactionType.UNKNOWN) {
+            Log.d(TAG, "  BLOCKED: transactionType is UNKNOWN")
+            return
+        }
 
         // 입금/출금 토글 확인
         when (transactionType) {
@@ -91,17 +107,25 @@ class NotificationListener : NotificationListenerService() {
         }
 
         // 내부거래 필터링
-        if (settings.excludeInternalTransfers &&
-            SettingsManager.isInternalTransfer(notification, settings.myAccounts)) {
+        val myAccounts = settings.myAccounts
+        val excludeToggle = settings.excludeInternalTransfers
+        Log.d(TAG, "Internal filter: toggle=$excludeToggle, accounts=${myAccounts.size}")
+        myAccounts.forEach { acc ->
+            Log.d(TAG, "  Stored account: bank='${acc.bankName}', name='${acc.accountName}', number='${acc.accountNumber}'")
+        }
+        Log.d(TAG, "  Notification: bank='${notification.bankName}', sender='${notification.senderName}', account='${notification.accountInfo}'")
+
+        if (excludeToggle && SettingsManager.isInternalTransfer(notification, myAccounts)) {
             val internalNotification = notification.copy(transactionStatus = TransactionStatus.INTERNAL)
             logDb.insertLog(
                 internalNotification, sentToTelegram = false,
                 deviceNumber = deviceNumber, deviceName = deviceName,
                 telegramStatus = ""
             )
-            Log.d(TAG, "Internal transfer detected, skipping Telegram: ${notification.senderName}")
+            Log.d(TAG, "Internal transfer BLOCKED: ${notification.bankName} / ${notification.senderName}")
             return
         }
+        Log.d(TAG, "Internal filter PASSED (not filtered)")
 
         // 결제수단 필터 확인 (정상 건만 필터, 실패/취소는 항상 전송)
         if (notification.transactionStatus == TransactionStatus.NORMAL) {
@@ -176,7 +200,29 @@ class NotificationListener : NotificationListenerService() {
 
     override fun onNotificationRemoved(sbn: StatusBarNotification) {}
 
+    private fun saveRecentPackage(packageName: String, title: String, text: String) {
+        try {
+            val prefs = getSharedPreferences("debug_packages", MODE_PRIVATE)
+            val existing = prefs.getString("recent", "") ?: ""
+            val lines = existing.split("\n").filter { it.isNotBlank() }.toMutableList()
+            val timestamp = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
+                .format(java.util.Date())
+            val entry = "[$timestamp] $packageName | $title | $text"
+            lines.add(0, entry)
+            // 최근 50개만 유지
+            val trimmed = lines.take(50).joinToString("\n")
+            prefs.edit().putString("recent", trimmed).apply()
+        } catch (e: Exception) {
+            Log.e(TAG, "saveRecentPackage error", e)
+        }
+    }
+
     companion object {
         private const val TAG = "BankNotifyListener"
+
+        fun getRecentPackages(context: android.content.Context): String {
+            val prefs = context.getSharedPreferences("debug_packages", MODE_PRIVATE)
+            return prefs.getString("recent", "기록 없음") ?: "기록 없음"
+        }
     }
 }
