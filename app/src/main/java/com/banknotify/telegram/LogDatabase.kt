@@ -174,7 +174,7 @@ class LogDatabase(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, D
     }
 
     fun getPendingLogs(): List<LogEntry> {
-        return queryLogs("$COL_TELEGRAM_STATUS = '대기'", null, null)
+        return queryLogs("$COL_TELEGRAM_STATUS IN ('대기', '실패') AND $COL_TRANSACTION_STATUS != '무시'", null, null)
     }
 
     fun getFailedLogs(): List<LogEntry> {
