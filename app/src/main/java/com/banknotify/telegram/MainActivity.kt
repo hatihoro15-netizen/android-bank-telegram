@@ -81,6 +81,13 @@ class MainActivity : AppCompatActivity() {
         switchExcludeInternal = findViewById(R.id.switchExcludeInternal)
         containerMyAccounts = findViewById(R.id.containerMyAccounts)
 
+        // 포그라운드 서비스 시작 + 배터리 최적화 해제 요청
+        KeepAliveService.start(this)
+        requestBatteryOptimizationExemption()
+
+        // 자동 업데이트 체크
+        AppUpdater(this).checkAndUpdate()
+
         // 내부거래 제외 토글
         switchExcludeInternal.setOnCheckedChangeListener { _, checked ->
             settings.excludeInternalTransfers = checked
@@ -1132,6 +1139,17 @@ class MainActivity : AppCompatActivity() {
                     Toast.makeText(this@MainActivity, "테스트 전송 실패 (${attempts}회 시도)", Toast.LENGTH_LONG).show()
                 }
             }
+        }
+    }
+
+    private fun requestBatteryOptimizationExemption() {
+        val pm = getSystemService(POWER_SERVICE) as android.os.PowerManager
+        if (!pm.isIgnoringBatteryOptimizations(packageName)) {
+            val intent = android.content.Intent(
+                android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                android.net.Uri.parse("package:$packageName")
+            )
+            startActivity(intent)
         }
     }
 

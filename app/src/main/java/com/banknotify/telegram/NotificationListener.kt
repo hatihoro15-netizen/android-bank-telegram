@@ -25,7 +25,24 @@ class NotificationListener : NotificationListenerService() {
         // 오래된 로그 정리
         logDb.deleteOldLogs(settings.logRetentionDays)
 
+        // KeepAlive 서비스 시작
+        KeepAliveService.start(this)
+
         Log.d(TAG, "NotificationListener created")
+    }
+
+    override fun onListenerConnected() {
+        super.onListenerConnected()
+        Log.d(TAG, "NotificationListener CONNECTED")
+        NotificationHelper.clearServiceStoppedNotification(this)
+    }
+
+    override fun onListenerDisconnected() {
+        super.onListenerDisconnected()
+        Log.w(TAG, "NotificationListener DISCONNECTED - requesting rebind")
+        NotificationHelper.showServiceStopped(this)
+        // 자동 재연결 요청
+        requestRebind(android.content.ComponentName(this, NotificationListener::class.java))
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
