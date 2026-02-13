@@ -201,7 +201,7 @@ class BankNotificationParser {
         val amount = amountPattern.find(combined)?.value
         val accountInfo = accountPattern.find(combined)?.value
         val senderName = extractSenderName(combined, amount)
-        val transactionType = detectTransactionType(title, text)
+        val transactionType = detectTransactionType(title, text, packageName)
         val transactionStatus = detectTransactionStatus(title, text)
 
         val (methods, fallback) = when (transactionType) {
