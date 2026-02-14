@@ -72,6 +72,13 @@ class NotificationListener : NotificationListenerService() {
         // heartbeat 갱신 (모든 알림)
         lastNotificationTime = System.currentTimeMillis()
 
+        // 오래된 알림 무시 (서비스 재연결 시 알림바에 남은 알림 재전달 방지)
+        val notifAge = System.currentTimeMillis() - sbn.postTime
+        if (notifAge > 60_000) {
+            Log.d(TAG, "SKIP old notification (${notifAge / 1000}s ago): $packageName")
+            return
+        }
+
         // 그룹 요약 알림 무시 (개별 알림만 처리)
         if (sbn.notification.flags and android.app.Notification.FLAG_GROUP_SUMMARY != 0) {
             Log.d(TAG, "SKIP group summary: $packageName")
