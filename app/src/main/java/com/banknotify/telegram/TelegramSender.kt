@@ -122,13 +122,15 @@ class TelegramSender {
         totalDetected: Int,
         totalSent: Int,
         internalCount: Int = 0,
-        internalAmount: Long = 0L
+        internalAmount: Long = 0L,
+        timeRange: String = ""
     ): String {
         val dateStr = SimpleDateFormat("yyyy-MM-dd", Locale.KOREA).format(Date())
         val typeLabel = if (transactionType == TransactionType.DEPOSIT) "입금" else "출금"
+        val rangeLabel = if (timeRange.isNotBlank()) "$timeRange " else ""
 
         val sb = StringBuilder()
-        sb.appendLine("\uD83D\uDCCA <b>[일일 ${typeLabel} 정산] $dateStr</b>")
+        sb.appendLine("\uD83D\uDCCA <b>[${typeLabel} 정산] $rangeLabel$dateStr</b>")
         sb.appendLine("\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501")
 
         sb.appendLine("\u2705 정상: ${normalCount}건 | ${formatAmount(normalAmount)}원")
@@ -163,6 +165,13 @@ class TelegramSender {
         sb.appendLine("감지 ${totalDetected}건 중 전송 성공 ${totalSent}건 $checkmark")
 
         return sb.toString()
+    }
+
+    suspend fun sendServiceAlert(botToken: String, chatId: String, deviceLabel: String, message: String) {
+        if (botToken.isBlank() || chatId.isBlank()) return
+        val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.KOREA).format(Date())
+        val text = "\uD83D\uDD14 <b>[시스템 알림]</b> $deviceLabel\n$message\n\u23F0 $timestamp"
+        sendWithRetry(botToken, chatId, text)
     }
 
     private fun escapeHtml(text: String): String {

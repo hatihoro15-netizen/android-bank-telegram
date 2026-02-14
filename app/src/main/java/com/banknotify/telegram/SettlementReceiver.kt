@@ -40,37 +40,61 @@ class SettlementReceiver : BroadcastReceiver() {
 
         if (botToken.isBlank()) return
 
-        val sinceTimestamp = settings.lastResetTimestamp
+        val now = System.currentTimeMillis()
+        val sinceTimestamp = settings.lastSettlementTimestamp.let {
+            if (it > 0) it else settings.lastResetTimestamp
+        }
         val timeFormat = SimpleDateFormat("HH:mm:ss", Locale.KOREA)
+        val rangeFormat = SimpleDateFormat("HH:mm", Locale.KOREA)
+        val timeRange = "${rangeFormat.format(Date(sinceTimestamp))}~${rangeFormat.format(Date(now))}"
 
         // 입금 정산
         if (settings.depositEnabled && settings.depositChatId.isNotBlank()) {
             val allLogs = logDb.getLogsSinceByTypeAndStatus(sinceTimestamp, "입금")
-            if (allLogs.isNotEmpty()) {
-                val message = buildSettlementMessage(TransactionType.DEPOSIT, allLogs, timeFormat)
-                sender.sendWithRetry(botToken, settings.depositChatId, message)
-                Log.d(TAG, "Deposit settlement sent")
+            val message = if (allLogs.isNotEmpty()) {
+                buildSettlementMessage(TransactionType.DEPOSIT, allLogs, timeFormat, timeRange)
+            } else {
+                buildEmptySettlementMessage(TransactionType.DEPOSIT, timeRange)
             }
+            sender.sendWithRetry(botToken, settings.depositChatId, message)
+            Log.d(TAG, "Deposit settlement sent (${allLogs.size} logs, $timeRange)")
         }
 
         // 출금 정산
         if (settings.withdrawalEnabled && settings.withdrawalChatId.isNotBlank()) {
             val allLogs = logDb.getLogsSinceByTypeAndStatus(sinceTimestamp, "출금")
-            if (allLogs.isNotEmpty()) {
-                val message = buildSettlementMessage(TransactionType.WITHDRAWAL, allLogs, timeFormat)
-                sender.sendWithRetry(botToken, settings.withdrawalChatId, message)
-                Log.d(TAG, "Withdrawal settlement sent")
+            val message = if (allLogs.isNotEmpty()) {
+                buildSettlementMessage(TransactionType.WITHDRAWAL, allLogs, timeFormat, timeRange)
+            } else {
+                buildEmptySettlementMessage(TransactionType.WITHDRAWAL, timeRange)
             }
+            sender.sendWithRetry(botToken, settings.withdrawalChatId, message)
+            Log.d(TAG, "Withdrawal settlement sent (${allLogs.size} logs, $timeRange)")
         }
+
+        // 정산 시간 업데이트
+        settings.lastSettlementTimestamp = now
 
         // 오래된 로그 정리
         logDb.deleteOldLogs(settings.logRetentionDays)
     }
 
+    private fun buildEmptySettlementMessage(transactionType: TransactionType, timeRange: String): String {
+        val dateStr = SimpleDateFormat("yyyy-MM-dd", Locale.KOREA).format(Date())
+        val typeLabel = if (transactionType == TransactionType.DEPOSIT) "입금" else "출금"
+        val sb = StringBuilder()
+        sb.appendLine("\uD83D\uDCCA <b>[${typeLabel} 정산] $timeRange $dateStr</b>")
+        sb.appendLine("\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501")
+        sb.appendLine("해당 구간 거래 없음")
+        sb.appendLine("\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501")
+        return sb.toString()
+    }
+
     private fun buildSettlementMessage(
         transactionType: TransactionType,
         logs: List<LogEntry>,
-        timeFormat: SimpleDateFormat
+        timeFormat: SimpleDateFormat,
+        timeRange: String
     ): String {
         val sender = TelegramSender()
 
@@ -142,14 +166,17 @@ class SettlementReceiver : BroadcastReceiver() {
             totalDetected = totalDetected,
             totalSent = totalSent,
             internalCount = internalCount,
-            internalAmount = internalAmount
+            internalAmount = internalAmount,
+            timeRange = timeRange
         )
     }
 
     private fun performReset(context: Context) {
         val settings = SettingsManager(context)
-        settings.lastResetTimestamp = System.currentTimeMillis()
-        Log.d(TAG, "Daily data reset at ${System.currentTimeMillis()}")
+        val now = System.currentTimeMillis()
+        settings.lastResetTimestamp = now
+        settings.lastSettlementTimestamp = 0L
+        Log.d(TAG, "Daily data reset at $now")
     }
 
     companion object {

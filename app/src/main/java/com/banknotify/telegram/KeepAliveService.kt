@@ -12,6 +12,9 @@ import android.os.PowerManager
 import android.provider.Settings
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.util.Timer
 import java.util.TimerTask
 
@@ -19,6 +22,7 @@ class KeepAliveService : Service() {
 
     private var wakeLock: PowerManager.WakeLock? = null
     private var healthCheckTimer: Timer? = null
+    private var silenceAlertSent: Boolean = false
 
     override fun onCreate() {
         super.onCreate()
@@ -118,6 +122,27 @@ class KeepAliveService : Service() {
             NotificationHelper.showServiceStopped(this)
         } else {
             NotificationHelper.clearServiceStoppedNotification(this)
+        }
+
+        // 30분 무알림 감지 (24시간)
+        if (isEnabled) {
+            val lastTime = NotificationListener.lastNotificationTime
+            val silentMinutes = (System.currentTimeMillis() - lastTime) / 60_000
+
+            if (lastTime > 0 && silentMinutes >= 30 && !silenceAlertSent) {
+                Log.w(TAG, "No notifications for ${silentMinutes}min - sending alert")
+                silenceAlertSent = true
+                CoroutineScope(Dispatchers.IO).launch {
+                    val settings = SettingsManager(this@KeepAliveService)
+                    TelegramSender().sendServiceAlert(
+                        settings.botToken, settings.depositChatId, settings.getDeviceLabel(),
+                        "\u26A0\uFE0F ${silentMinutes}분간 알림 없음 - 서비스 상태 확인 필요"
+                    )
+                }
+            }
+            if (silentMinutes < 30) {
+                silenceAlertSent = false
+            }
         }
     }
 

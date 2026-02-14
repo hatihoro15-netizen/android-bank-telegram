@@ -11,11 +11,25 @@ object SettlementScheduler {
     private const val REQUEST_SETTLEMENT = 2001
     private const val REQUEST_RESET = 2002
     private const val REQUEST_WATCHDOG = 2003
+    private const val REQUEST_SETTLEMENT_0530 = 2004
+    private const val REQUEST_SETTLEMENT_1130 = 2005
+    private const val REQUEST_SETTLEMENT_1730 = 2006
 
     fun scheduleDaily(context: Context) {
         val settings = SettingsManager(context)
+
+        // 23:30 정산 (기존)
         scheduleAlarm(context, settings.settlementHour, settings.settlementMinute,
             REQUEST_SETTLEMENT, "settlement", SettlementReceiver::class.java)
+
+        // 6시간 간격 추가 정산
+        val times = listOf(5 to 30, 11 to 30, 17 to 30)
+        val codes = listOf(REQUEST_SETTLEMENT_0530, REQUEST_SETTLEMENT_1130, REQUEST_SETTLEMENT_1730)
+        times.forEachIndexed { i, (h, m) ->
+            scheduleAlarm(context, h, m, codes[i], "settlement", SettlementReceiver::class.java)
+        }
+
+        // 23:55 리셋
         scheduleAlarm(context, 23, 55, REQUEST_RESET, "reset", SettlementReceiver::class.java)
     }
 
@@ -34,6 +48,9 @@ object SettlementScheduler {
     fun cancel(context: Context) {
         val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         cancelAlarm(context, am, REQUEST_SETTLEMENT, SettlementReceiver::class.java)
+        cancelAlarm(context, am, REQUEST_SETTLEMENT_0530, SettlementReceiver::class.java)
+        cancelAlarm(context, am, REQUEST_SETTLEMENT_1130, SettlementReceiver::class.java)
+        cancelAlarm(context, am, REQUEST_SETTLEMENT_1730, SettlementReceiver::class.java)
         cancelAlarm(context, am, REQUEST_RESET, SettlementReceiver::class.java)
         cancelWatchdog(context, am)
     }

@@ -51,6 +51,10 @@ class SettingsManager(context: Context) {
         get() = prefs.getLong(KEY_LAST_RESET, 0L)
         set(value) = prefs.edit().putLong(KEY_LAST_RESET, value).apply()
 
+    var lastSettlementTimestamp: Long
+        get() = prefs.getLong(KEY_LAST_SETTLEMENT, 0L)
+        set(value) = prefs.edit().putLong(KEY_LAST_SETTLEMENT, value).apply()
+
     // 디바이스 설정
     var deviceNumber: Int
         get() = prefs.getInt(KEY_DEVICE_NUMBER, 1)
@@ -122,6 +126,7 @@ class SettingsManager(context: Context) {
         private const val KEY_WITHDRAWAL_ENABLED = "withdrawal_enabled"
         private const val KEY_SETTLEMENT_TIME = "settlement_time"
         private const val KEY_LAST_RESET = "last_reset_timestamp"
+        private const val KEY_LAST_SETTLEMENT = "last_settlement_timestamp"
         private const val KEY_DEPOSIT_METHODS = "deposit_methods"
         private const val KEY_WITHDRAWAL_METHODS = "withdrawal_methods"
         private const val KEY_DEVICE_NUMBER = "device_number"
