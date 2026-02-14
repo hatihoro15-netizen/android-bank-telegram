@@ -212,7 +212,10 @@ class BankNotificationParser {
         enabledWithdrawalMethods: List<String>
     ): BankNotification {
         val bankName = if (packageName == "com.kakao.talk") {
-            getBankNameFromKakaoTitle(title) ?: "카카오톡"
+            getBankNameFromKakaoTitle(title)
+                ?: getBankNameFromKakaoTitle(text)
+                ?: title
+                ?: "카카오톡"
         } else {
             monitoredPackages[packageName] ?: packageName
         }

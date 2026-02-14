@@ -89,9 +89,9 @@ class NotificationListener : NotificationListenerService() {
             return
         }
 
-        // 카카오톡: 제목(채팅방명)이 은행명일 때만 처리
+        // 카카오톡: 거래 키워드 없으면 무시 (일반 카톡 필터)
         if (packageName == "com.kakao.talk") {
-            if (parser.getBankNameFromKakaoTitle(rawTitle) == null) {
+            if (!parser.isTransactionNotification(rawTitle, rawText)) {
                 return
             }
         }
