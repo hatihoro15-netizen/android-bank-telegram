@@ -89,6 +89,13 @@ class NotificationListener : NotificationListenerService() {
             return
         }
 
+        // 카카오톡: 제목(채팅방명)이 은행명일 때만 처리
+        if (packageName == "com.kakao.talk") {
+            if (parser.getBankNameFromKakaoTitle(rawTitle) == null) {
+                return
+            }
+        }
+
         val title = rawTitle.ifBlank { null }
         val text = extras.getCharSequence("android.text")?.toString()
         val bigText = extras.getCharSequence("android.bigText")?.toString()

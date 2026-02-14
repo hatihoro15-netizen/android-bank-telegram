@@ -42,6 +42,7 @@ class BankNotificationParser {
         "nh.smart.banking" to "NH농협은행",
         "com.nh.cashcook" to "NH농협은행",
         "com.kakaobank.channel" to "카카오뱅크",
+        "com.kakao.talk" to "카카오톡",
         "com.ibk.neobanking" to "IBK기업은행",
         "com.epost.psf.sdsi" to "우체국",
         "com.kfcc.member" to "새마을금고",
@@ -123,9 +124,23 @@ class BankNotificationParser {
     private val amountPattern = Regex("""[\d,]+\s*원""")
     private val accountPattern = Regex("""\d{2,6}[-*]\d{2,8}[-*]?\d{0,6}""")
 
+    // 카카오톡 제목(채팅방명)에서 은행명 매칭용
+    private val kakaoTalkBankNames = listOf(
+        "KB국민은행", "국민은행", "신한은행", "하나은행", "우리은행",
+        "NH농협은행", "농협은행", "카카오뱅크", "IBK기업은행", "기업은행",
+        "SC제일은행", "씨티은행", "대구은행", "부산은행", "경남은행",
+        "광주은행", "전북은행", "제주은행", "KDB산업은행", "수협은행",
+        "우체국", "새마을금고", "신협", "카카오페이", "토스", "네이버페이", "페이코"
+    )
+
     fun isMonitoredApp(packageName: String): Boolean = packageName in monitoredPackages
 
     fun getBankName(packageName: String): String = monitoredPackages[packageName] ?: packageName
+
+    fun getBankNameFromKakaoTitle(title: String?): String? {
+        if (title.isNullOrBlank()) return null
+        return kakaoTalkBankNames.firstOrNull { title.contains(it) }
+    }
 
     fun isTransactionNotification(title: String?, text: String?): Boolean {
         val combined = "${title.orEmpty()} ${text.orEmpty()}"
@@ -196,7 +211,11 @@ class BankNotificationParser {
         enabledDepositMethods: List<String>,
         enabledWithdrawalMethods: List<String>
     ): BankNotification {
-        val bankName = monitoredPackages[packageName] ?: packageName
+        val bankName = if (packageName == "com.kakao.talk") {
+            getBankNameFromKakaoTitle(title) ?: "카카오톡"
+        } else {
+            monitoredPackages[packageName] ?: packageName
+        }
         val combined = "${title.orEmpty()} ${text.orEmpty()}"
         val amount = amountPattern.find(combined)?.value
         val accountInfo = accountPattern.find(combined)?.value
