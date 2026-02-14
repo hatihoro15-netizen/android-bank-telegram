@@ -256,6 +256,20 @@ class LogDatabase(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, D
         return logs
     }
 
+    fun isDuplicateInDb(amount: String, senderName: String, bankName: String, withinMinutes: Int = 5): Boolean {
+        val cutoff = System.currentTimeMillis() - (withinMinutes * 60_000L)
+        val db = readableDatabase
+        val cursor = db.rawQuery(
+            """SELECT COUNT(*) FROM $TABLE_LOGS
+               WHERE $COL_AMOUNT = ? AND $COL_SENDER_NAME = ? AND $COL_BANK_NAME = ?
+               AND $COL_TIMESTAMP > ? AND $COL_TRANSACTION_STATUS != '무시'""",
+            arrayOf(amount, senderName, bankName, cutoff.toString())
+        )
+        cursor.use {
+            return if (it.moveToFirst()) it.getInt(0) > 0 else false
+        }
+    }
+
     fun clearLogs() {
         writableDatabase.delete(TABLE_LOGS, null, null)
     }

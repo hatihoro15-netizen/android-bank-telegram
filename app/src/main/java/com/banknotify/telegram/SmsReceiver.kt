@@ -107,9 +107,17 @@ class SmsReceiver : BroadcastReceiver() {
             enabledDeposit, enabledWithdrawal
         ).copy(bankName = bankName, source = "SMS")
 
-        // 중복 체크 (SMS + 푸시 동시 수신 방지)
+        // 중복 체크 1: 메모리 기반 (SMS + 푸시 동시 수신 방지, 30초)
         if (DuplicateDetector.isDuplicate(notification.amount, notification.senderName, "SMS")) {
             Log.d(TAG, "Duplicate SMS transaction, skipping")
+            return
+        }
+
+        // 중복 체크 2: DB 기반 (서비스 재연결 등 모든 상황, 5분)
+        if (logDb.isDuplicateInDb(
+                notification.amount ?: "", notification.senderName ?: "",
+                notification.bankName)) {
+            Log.d(TAG, "Duplicate found in DB, skipping SMS: ${notification.amount} ${notification.senderName}")
             return
         }
 

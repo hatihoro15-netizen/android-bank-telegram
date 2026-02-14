@@ -166,9 +166,17 @@ class NotificationListener : NotificationListenerService() {
             enabledDeposit, enabledWithdrawal
         ).copy(source = "알림")
 
-        // 중복 체크 (SMS + 푸시 동시 수신 방지)
+        // 중복 체크 1: 메모리 기반 (SMS + 푸시 동시 수신 방지, 30초)
         if (DuplicateDetector.isDuplicate(notification.amount, notification.senderName, "알림")) {
             Log.d(TAG, "Duplicate push notification, skipping (already sent via SMS)")
+            return
+        }
+
+        // 중복 체크 2: DB 기반 (서비스 재연결 시에도 확실하게 잡음, 5분)
+        if (logDb.isDuplicateInDb(
+                notification.amount ?: "", notification.senderName ?: "",
+                notification.bankName)) {
+            Log.d(TAG, "Duplicate found in DB, skipping: ${notification.amount} ${notification.senderName}")
             return
         }
 
