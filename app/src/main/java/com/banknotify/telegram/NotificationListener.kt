@@ -13,6 +13,7 @@ class NotificationListener : NotificationListenerService() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val parser = BankNotificationParser()
     private val sender = TelegramSender()
+    private val recentNotificationKeys = mutableMapOf<String, Long>()
 
     private lateinit var settings: SettingsManager
     private lateinit var logDb: LogDatabase
@@ -70,6 +71,24 @@ class NotificationListener : NotificationListenerService() {
 
         // heartbeat 갱신 (모든 알림)
         lastNotificationTime = System.currentTimeMillis()
+
+        // 그룹 요약 알림 무시 (개별 알림만 처리)
+        if (sbn.notification.flags and android.app.Notification.FLAG_GROUP_SUMMARY != 0) {
+            Log.d(TAG, "SKIP group summary: $packageName")
+            return
+        }
+
+        // 알림 업데이트 중복 방지 (같은 key 30초 내 무시)
+        val notifKey = "${sbn.key}|${sbn.notification.`when`}"
+        val now = System.currentTimeMillis()
+        if (recentNotificationKeys.containsKey(notifKey) &&
+            now - (recentNotificationKeys[notifKey] ?: 0) < 30_000) {
+            Log.d(TAG, "SKIP duplicate notification key: $notifKey")
+            return
+        }
+        recentNotificationKeys[notifKey] = now
+        // 오래된 키 정리
+        recentNotificationKeys.entries.removeAll { now - it.value > 60_000 }
 
         // 모든 알림 패키지명 기록 (디버그용)
         val extras = sbn.notification.extras
