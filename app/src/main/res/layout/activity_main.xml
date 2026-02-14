@@ -447,7 +447,10 @@
 
         <!-- 기록 보기 -->
         <Button android:id="@+id/btnViewLogs" android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="전체 로그 보기" android:backgroundTint="#37474F" android:layout_marginBottom="12dp" />
+            android:text="전체 로그 보기" android:backgroundTint="#37474F" android:layout_marginBottom="6dp" />
+
+        <Button android:id="@+id/btnDebugLog" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="알림 처리 로그" android:backgroundTint="#E65100" android:layout_marginBottom="12dp" />
 
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="* SMS + 푸시 알림 이중 감지로 은행 거래를 감지합니다.\n* 동일 거래 중복 전송 방지 (30초 이내 동일 금액+이름)\n* 입금/출금을 각각 다른 채팅방으로 분리 전송합니다.\n* 전송 실패 시 최대 3회 자동 재시도합니다.\n* 5분마다 서비스 생존 체크를 수행합니다.\n* 로그 보관: 30일"

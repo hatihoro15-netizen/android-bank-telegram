@@ -168,6 +168,19 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, LogActivity::class.java))
         }
 
+        findViewById<Button>(R.id.btnDebugLog).setOnClickListener {
+            val log = DebugLogger.getAll(this)
+            android.app.AlertDialog.Builder(this)
+                .setTitle("알림 처리 로그")
+                .setMessage(log)
+                .setPositiveButton("확인", null)
+                .setNeutralButton("초기화") { _, _ ->
+                    DebugLogger.clear(this)
+                    android.widget.Toast.makeText(this, "로그 초기화됨", android.widget.Toast.LENGTH_SHORT).show()
+                }
+                .show()
+        }
+
         findViewById<Button>(R.id.btnProcessPending).setOnClickListener {
             processPendingNow()
         }
