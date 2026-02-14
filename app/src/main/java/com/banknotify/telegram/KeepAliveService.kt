@@ -22,6 +22,7 @@ class KeepAliveService : Service() {
 
     private var wakeLock: PowerManager.WakeLock? = null
     private var healthCheckTimer: Timer? = null
+    private var silenceRecoveryAttempted: Boolean = false
     private var silenceAlertSent: Boolean = false
 
     override fun onCreate() {
@@ -124,23 +125,35 @@ class KeepAliveService : Service() {
             NotificationHelper.clearServiceStoppedNotification(this)
         }
 
-        // 30분 무알림 감지 (24시간)
+        // 무알림 감지 → 자동 복구 (24시간)
         if (isEnabled) {
             val lastTime = NotificationListener.lastNotificationTime
             val silentMinutes = (System.currentTimeMillis() - lastTime) / 60_000
 
-            if (lastTime > 0 && silentMinutes >= 30 && !silenceAlertSent) {
-                Log.w(TAG, "No notifications for ${silentMinutes}min - sending alert")
+            // 30분 무알림 → 자동 rebind 시도
+            if (lastTime > 0 && silentMinutes >= 30 && !silenceRecoveryAttempted) {
+                Log.w(TAG, "No notifications for ${silentMinutes}min - auto rebind")
+                silenceRecoveryAttempted = true
+                android.service.notification.NotificationListenerService.requestRebind(cn)
+            }
+
+            // 60분 무알림 → 자동 복구 실패, 텔레그램 경고
+            if (lastTime > 0 && silentMinutes >= 60 && !silenceAlertSent) {
+                Log.e(TAG, "No notifications for ${silentMinutes}min - recovery failed, alerting")
                 silenceAlertSent = true
+                android.service.notification.NotificationListenerService.requestRebind(cn)
                 CoroutineScope(Dispatchers.IO).launch {
                     val settings = SettingsManager(this@KeepAliveService)
                     TelegramSender().sendServiceAlert(
                         settings.botToken, settings.depositChatId, settings.getDeviceLabel(),
-                        "\u26A0\uFE0F ${silentMinutes}분간 알림 없음 - 서비스 상태 확인 필요"
+                        "\u26A0\uFE0F ${silentMinutes}분간 알림 없음 - 자동 복구 실패, 앱 확인 필요"
                     )
                 }
             }
+
+            // 알림 정상 복구 → 플래그 리셋
             if (silentMinutes < 30) {
+                silenceRecoveryAttempted = false
                 silenceAlertSent = false
             }
         }

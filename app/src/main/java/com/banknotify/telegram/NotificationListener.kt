@@ -37,32 +37,12 @@ class NotificationListener : NotificationListenerService() {
         lastNotificationTime = System.currentTimeMillis()
         Log.d(TAG, "NotificationListener CONNECTED")
         NotificationHelper.clearServiceStoppedNotification(this)
-
-        // 연결 복구 시 텔레그램 알림
-        CoroutineScope(Dispatchers.IO).launch {
-            val s = SettingsManager(this@NotificationListener)
-            TelegramSender().sendServiceAlert(
-                s.botToken, s.depositChatId, s.getDeviceLabel(),
-                "\u2705 NotificationListener 연결됨"
-            )
-        }
     }
 
     override fun onListenerDisconnected() {
         super.onListenerDisconnected()
         Log.w(TAG, "NotificationListener DISCONNECTED - requesting rebind")
         NotificationHelper.showServiceStopped(this)
-
-        // 끊김 즉시 텔레그램 경고
-        CoroutineScope(Dispatchers.IO).launch {
-            val s = SettingsManager(this@NotificationListener)
-            TelegramSender().sendServiceAlert(
-                s.botToken, s.depositChatId, s.getDeviceLabel(),
-                "\uD83D\uDEA8 NotificationListener 끊김 - 자동 복구 시도 중"
-            )
-        }
-
-        // 자동 재연결 요청
         requestRebind(android.content.ComponentName(this, NotificationListener::class.java))
     }
 
