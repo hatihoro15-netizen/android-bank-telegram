@@ -12,9 +12,6 @@ import android.os.PowerManager
 import android.provider.Settings
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import java.util.Timer
 import java.util.TimerTask
 
@@ -22,8 +19,7 @@ class KeepAliveService : Service() {
 
     private var wakeLock: PowerManager.WakeLock? = null
     private var healthCheckTimer: Timer? = null
-    private var silenceRecoveryAttempted: Boolean = false
-    private var silenceAlertSent: Boolean = false
+    private var rebindCount: Int = 0
 
     override fun onCreate() {
         super.onCreate()
@@ -125,36 +121,21 @@ class KeepAliveService : Service() {
             NotificationHelper.clearServiceStoppedNotification(this)
         }
 
-        // 무알림 감지 → 자동 복구 (24시간)
+        // 무알림 감지 → 자동 rebind 반복 (30분마다)
         if (isEnabled) {
             val lastTime = NotificationListener.lastNotificationTime
             val silentMinutes = (System.currentTimeMillis() - lastTime) / 60_000
 
-            // 30분 무알림 → 자동 rebind 시도
-            if (lastTime > 0 && silentMinutes >= 30 && !silenceRecoveryAttempted) {
-                Log.w(TAG, "No notifications for ${silentMinutes}min - auto rebind")
-                silenceRecoveryAttempted = true
-                android.service.notification.NotificationListenerService.requestRebind(cn)
-            }
-
-            // 60분 무알림 → 자동 복구 실패, 텔레그램 경고
-            if (lastTime > 0 && silentMinutes >= 60 && !silenceAlertSent) {
-                Log.e(TAG, "No notifications for ${silentMinutes}min - recovery failed, alerting")
-                silenceAlertSent = true
-                android.service.notification.NotificationListenerService.requestRebind(cn)
-                CoroutineScope(Dispatchers.IO).launch {
-                    val settings = SettingsManager(this@KeepAliveService)
-                    TelegramSender().sendServiceAlert(
-                        settings.botToken, settings.depositChatId, settings.getDeviceLabel(),
-                        "\u26A0\uFE0F ${silentMinutes}분간 알림 없음 - 자동 복구 실패, 앱 확인 필요"
-                    )
+            if (lastTime > 0 && silentMinutes >= 30) {
+                // 30분마다 반복 rebind (30, 60, 90, 120...)
+                val shouldRebind = (silentMinutes / 30).toInt() > rebindCount
+                if (shouldRebind) {
+                    rebindCount++
+                    Log.w(TAG, "No notifications for ${silentMinutes}min - auto rebind #$rebindCount")
+                    android.service.notification.NotificationListenerService.requestRebind(cn)
                 }
-            }
-
-            // 알림 정상 복구 → 플래그 리셋
-            if (silentMinutes < 30) {
-                silenceRecoveryAttempted = false
-                silenceAlertSent = false
+            } else {
+                rebindCount = 0
             }
         }
     }
