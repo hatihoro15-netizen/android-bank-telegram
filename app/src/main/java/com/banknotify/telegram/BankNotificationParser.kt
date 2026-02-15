@@ -248,8 +248,11 @@ class BankNotificationParser {
         val amount = amountPattern.find(combined)?.value
         val accountInfo = accountPattern.find(combined)?.value
 
+        // 가맹점 앱: "~에서" 앞의 가맹점명 추출
         // 카카오톡 개인 송금: title이 보낸 사람 이름
-        val senderName = if (isKakaoPayTransfer && title != null &&
+        val senderName = if (packageName in merchantPackages) {
+            extractMerchantName(combined)
+        } else if (isKakaoPayTransfer && title != null &&
             kakaoTalkBankNames.none { title.contains(it) }) {
             title
         } else {
@@ -277,6 +280,13 @@ class BankNotificationParser {
             transactionStatus = transactionStatus,
             paymentMethod = paymentMethod
         )
+    }
+
+    private fun extractMerchantName(text: String): String? {
+        // "주식회사 하람에서 40,000원이 결제되었습니다" → "주식회사 하람"
+        val pattern = Regex("""([가-힣a-zA-Z0-9][가-힣a-zA-Z0-9\s]{0,20}?)에서""")
+        val match = pattern.find(text)
+        return match?.groupValues?.get(1)?.trim()
     }
 
     private fun extractSenderName(text: String, amount: String?): String? {
