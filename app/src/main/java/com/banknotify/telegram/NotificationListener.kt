@@ -86,6 +86,17 @@ class NotificationListener : NotificationListenerService() {
         if (!settings.pushEnabled) return
 
         if (!parser.isMonitoredApp(packageName)) {
+            // 금융/결제 관련 미등록 앱은 로그 기록 (디버깅용)
+            if (packageName.contains("pay", ignoreCase = true) ||
+                packageName.contains("bank", ignoreCase = true) ||
+                packageName.contains("money", ignoreCase = true) ||
+                packageName.contains("zero", ignoreCase = true) ||
+                packageName.contains("kftc", ignoreCase = true) ||
+                packageName.contains("toss", ignoreCase = true) ||
+                packageName.contains("fin", ignoreCase = true) ||
+                packageName.contains("kakao", ignoreCase = true)) {
+                DebugLogger.log(this, "SKIP 미등록앱 pkg=$packageName | $rawTitle | ${rawText.take(40)}")
+            }
             return
         }
 
