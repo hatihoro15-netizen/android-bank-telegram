@@ -53,6 +53,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvSmsStatus: TextView
     private lateinit var tvPushStatus: TextView
     private lateinit var switchExcludeInternal: MaterialSwitch
+    private lateinit var switchSettlementEnabled: MaterialSwitch
     private lateinit var containerMyAccounts: LinearLayout
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -79,6 +80,7 @@ class MainActivity : AppCompatActivity() {
         tvSmsStatus = findViewById(R.id.tvSmsStatus)
         tvPushStatus = findViewById(R.id.tvPushStatus)
         switchExcludeInternal = findViewById(R.id.switchExcludeInternal)
+        switchSettlementEnabled = findViewById(R.id.switchSettlementEnabled)
         containerMyAccounts = findViewById(R.id.containerMyAccounts)
 
         // 포그라운드 서비스 시작 + 배터리 최적화 해제 요청
@@ -91,6 +93,10 @@ class MainActivity : AppCompatActivity() {
         // 내부거래 제외 토글
         switchExcludeInternal.setOnCheckedChangeListener { _, checked ->
             settings.excludeInternalTransfers = checked
+        }
+        // 정산 전송 토글
+        switchSettlementEnabled.setOnCheckedChangeListener { _, checked ->
+            settings.settlementEnabled = checked
         }
         findViewById<Button>(R.id.btnAddAccount).setOnClickListener {
             showAddAccountDialog()
@@ -239,6 +245,9 @@ class MainActivity : AppCompatActivity() {
 
         // 내부거래 설정
         switchExcludeInternal.isChecked = settings.excludeInternalTransfers
+
+        // 정산 설정
+        switchSettlementEnabled.isChecked = settings.settlementEnabled
         buildAccountViews()
 
         refreshMethodViews()

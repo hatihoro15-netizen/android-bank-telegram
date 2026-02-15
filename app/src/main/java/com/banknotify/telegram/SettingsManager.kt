@@ -88,6 +88,11 @@ class SettingsManager(context: Context) {
         get() = prefs.getBoolean(KEY_EXCLUDE_INTERNAL, false)
         set(value) = prefs.edit().putBoolean(KEY_EXCLUDE_INTERNAL, value).apply()
 
+    // 정산 전송 (이 기기에서 정산 메시지 전송 여부)
+    var settlementEnabled: Boolean
+        get() = prefs.getBoolean(KEY_SETTLEMENT_ENABLED, true)
+        set(value) = prefs.edit().putBoolean(KEY_SETTLEMENT_ENABLED, value).apply()
+
 
     var myAccounts: List<MyAccountItem>
         get() {
@@ -136,6 +141,7 @@ class SettingsManager(context: Context) {
         private const val KEY_PUSH_ENABLED = "push_detection_enabled"
         private const val KEY_EXCLUDE_INTERNAL = "exclude_internal_transfers"
         private const val KEY_MY_ACCOUNTS = "my_accounts"
+        private const val KEY_SETTLEMENT_ENABLED = "settlement_enabled"
 
         const val DEFAULT_BOT_TOKEN = "8322174657:AAHVc_-YECvt3vnqmAieSIkQ57X7qwFKEU4"
         const val DEFAULT_DEPOSIT_CHAT_ID = "-5120830461"

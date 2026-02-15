@@ -439,8 +439,12 @@
                         style="@style/Widget.Material3.Button.TonalButton" />
                 </LinearLayout>
 
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/switchSettlementEnabled" android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="이 기기에서 정산 전송" android:textSize="14sp" android:layout_marginTop="8dp" android:layout_marginBottom="4dp" />
+
                 <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-                    android:text="* 정산 데이터 초기화: 매일 23:55 고정\n* 입금 정산 → 입금 채팅방 전송\n* 출금 정산 → 출금 채팅방 전송\n* 정상/실패/취소 분리 표시\n* 디바이스별 구분 표시"
+                    android:text="* 여러 기기 사용 시 한 기기에서만 켜주세요\n* 정산 데이터 초기화: 매일 23:55 고정\n* 입금+출금 통합 정산 메시지 1건 전송"
                     android:textSize="11sp" android:textColor="#757575" android:lineSpacingMultiplier="1.3" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
