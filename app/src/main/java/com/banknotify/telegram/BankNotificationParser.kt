@@ -84,7 +84,11 @@ class BankNotificationParser {
     )
 
     private val cancelledKeywords = listOf(
-        "취소", "환불", "철회", "복원", "반품"
+        "취소완료", "취소 완료", "취소되었", "취소처리", "취소 처리",
+        "거래취소", "결제취소", "이체취소", "송금취소", "승인취소",
+        "거래 취소", "결제 취소", "이체 취소", "송금 취소", "승인 취소",
+        "환불완료", "환불 완료", "환불되었", "환불처리",
+        "철회", "복원", "반품"
     )
 
     private val excludeKeywords = listOf(
@@ -115,6 +119,12 @@ class BankNotificationParser {
         "kr.or.zeropay.zip" to "제로페이"
     )
 
+    // 카카오톡으로 온 카카오페이 송금인지 판별
+    fun isKakaoPayTransfer(packageName: String, text: String?): Boolean {
+        return packageName == "com.kakao.talk" &&
+                kakaoPayTransferKeywords.any { text.orEmpty().contains(it) }
+    }
+
     // 가맹점/결제단말 앱: "결제완료"가 입금(매출)을 의미하는 패키지
     private val merchantPackages = setOf(
         "com.kftc.zeropay.consumer",
@@ -131,6 +141,12 @@ class BankNotificationParser {
         "SC제일은행", "씨티은행", "대구은행", "부산은행", "경남은행",
         "광주은행", "전북은행", "제주은행", "KDB산업은행", "수협은행",
         "우체국", "새마을금고", "신협", "카카오페이", "토스", "네이버페이", "페이코"
+    )
+
+    // 카카오톡 개인 송금 감지 키워드 (제목이 사람 이름인 경우)
+    private val kakaoPayTransferKeywords = listOf(
+        "보냈어요", "보냈습니다", "송금 받기", "송금받기", "받아주세요",
+        "받기완료", "받기 완료"
     )
 
     fun isMonitoredApp(packageName: String): Boolean = packageName in monitoredPackages
@@ -199,6 +215,12 @@ class BankNotificationParser {
         packagePaymentMethod[packageName]?.let { pkgMethod ->
             if (pkgMethod in enabledMethods) return pkgMethod
         }
+        // 카카오톡으로 온 카카오페이 송금
+        if (packageName == "com.kakao.talk" &&
+            kakaoPayTransferKeywords.any { text.contains(it) } &&
+            "카카오페이" in enabledMethods) {
+            return "카카오페이"
+        }
         if (defaultFallback in enabledMethods) return defaultFallback
         if ("기타" in enabledMethods) return "기타"
         return enabledMethods.firstOrNull() ?: "알수없음"
@@ -211,10 +233,13 @@ class BankNotificationParser {
         enabledDepositMethods: List<String>,
         enabledWithdrawalMethods: List<String>
     ): BankNotification {
+        val isKakaoPayTransfer = packageName == "com.kakao.talk" &&
+                kakaoPayTransferKeywords.any { text.orEmpty().contains(it) }
+
         val bankName = if (packageName == "com.kakao.talk") {
             getBankNameFromKakaoTitle(title)
                 ?: getBankNameFromKakaoTitle(text)
-                ?: title
+                ?: if (isKakaoPayTransfer) "카카오페이" else title
                 ?: "카카오톡"
         } else {
             monitoredPackages[packageName] ?: packageName
@@ -222,7 +247,15 @@ class BankNotificationParser {
         val combined = "${title.orEmpty()} ${text.orEmpty()}"
         val amount = amountPattern.find(combined)?.value
         val accountInfo = accountPattern.find(combined)?.value
-        val senderName = extractSenderName(combined, amount)
+
+        // 카카오톡 개인 송금: title이 보낸 사람 이름
+        val senderName = if (isKakaoPayTransfer && title != null &&
+            kakaoTalkBankNames.none { title.contains(it) }) {
+            title
+        } else {
+            extractSenderName(combined, amount)
+        }
+
         val transactionType = detectTransactionType(title, text, packageName)
         val transactionStatus = detectTransactionStatus(title, text)
 
