@@ -66,8 +66,9 @@ class SettlementReceiver : BroadcastReceiver() {
         } else emptyList()
 
         // 통합 정산 메시지 생성
+        val deviceLabel = settings.getDeviceLabel()
         val message = buildCombinedSettlementMessage(
-            depositLogs, withdrawalLogs, timeFormat, timeRange, dateStr
+            depositLogs, withdrawalLogs, timeFormat, timeRange, dateStr, deviceLabel
         )
 
         // 입금 채팅방에 전송 (메인)
@@ -97,10 +98,11 @@ class SettlementReceiver : BroadcastReceiver() {
         withdrawalLogs: List<LogEntry>,
         timeFormat: SimpleDateFormat,
         timeRange: String,
-        dateStr: String
+        dateStr: String,
+        deviceLabel: String
     ): String {
         val sb = StringBuilder()
-        sb.appendLine("\uD83D\uDCCA <b>[정산] $timeRange $dateStr</b>")
+        sb.appendLine("\uD83D\uDCCA <b>[${deviceLabel}] [정산] $timeRange $dateStr</b>")
         sb.appendLine("\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501")
 
         // 입금 섹션
