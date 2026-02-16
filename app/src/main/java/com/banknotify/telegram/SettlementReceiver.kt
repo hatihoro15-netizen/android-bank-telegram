@@ -20,7 +20,8 @@ class SettlementReceiver : BroadcastReceiver() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 when (type) {
-                    "settlement" -> performSettlement(context)
+                    "settlement" -> performSettlement(context, isDaily = false)
+                    "settlement_daily" -> performSettlement(context, isDaily = true)
                     "reset" -> performReset(context)
                 }
             } catch (e: Exception) {
@@ -32,7 +33,7 @@ class SettlementReceiver : BroadcastReceiver() {
         }
     }
 
-    private suspend fun performSettlement(context: Context) {
+    private suspend fun performSettlement(context: Context, isDaily: Boolean) {
         val settings = SettingsManager(context)
 
         // 정산 전송 꺼져있으면 스킵
@@ -55,8 +56,9 @@ class SettlementReceiver : BroadcastReceiver() {
         val rangeFormat = SimpleDateFormat("HH:mm", Locale.KOREA)
         val timeRange = "${rangeFormat.format(Date(sinceTimestamp))}~${rangeFormat.format(Date(now))}"
         val dateStr = SimpleDateFormat("yyyy-MM-dd", Locale.KOREA).format(Date())
+        val deviceLabel = settings.getDeviceLabel()
 
-        // 입금+출금 로그 전체 조회
+        // 구간 로그 조회
         val depositLogs = if (settings.depositEnabled) {
             logDb.getLogsSinceByTypeAndStatus(sinceTimestamp, "입금")
         } else emptyList()
@@ -65,32 +67,120 @@ class SettlementReceiver : BroadcastReceiver() {
             logDb.getLogsSinceByTypeAndStatus(sinceTimestamp, "출금")
         } else emptyList()
 
-        // 통합 정산 메시지 생성
-        val deviceLabel = settings.getDeviceLabel()
+        // 구간 정산 메시지
         val message = buildCombinedSettlementMessage(
             depositLogs, withdrawalLogs, timeFormat, timeRange, dateStr, deviceLabel
         )
 
-        // 입금 채팅방에 전송 (메인)
+        // 입금 채팅방에 전송
         val depositChatId = settings.depositChatId
         val withdrawalChatId = settings.withdrawalChatId
 
         if (depositChatId.isNotBlank()) {
             sender.sendWithRetry(botToken, depositChatId, message)
         }
-
-        // 출금 채팅방이 다르면 거기에도 전송
         if (withdrawalChatId.isNotBlank() && withdrawalChatId != depositChatId) {
             sender.sendWithRetry(botToken, withdrawalChatId, message)
         }
 
-        Log.d(TAG, "Combined settlement sent (deposit=${depositLogs.size}, withdrawal=${withdrawalLogs.size}, $timeRange)")
+        // 23:30 일일 종합 정산
+        if (isDaily) {
+            val dailySince = settings.lastResetTimestamp
+            val dailyRange = "${rangeFormat.format(Date(dailySince))}~${rangeFormat.format(Date(now))}"
+
+            val dailyDepositLogs = if (settings.depositEnabled) {
+                logDb.getLogsSinceByTypeAndStatus(dailySince, "입금")
+            } else emptyList()
+
+            val dailyWithdrawalLogs = if (settings.withdrawalEnabled) {
+                logDb.getLogsSinceByTypeAndStatus(dailySince, "출금")
+            } else emptyList()
+
+            val dailyMessage = buildDailySummaryMessage(
+                dailyDepositLogs, dailyWithdrawalLogs, timeFormat, dailyRange, dateStr, deviceLabel
+            )
+
+            if (depositChatId.isNotBlank()) {
+                sender.sendWithRetry(botToken, depositChatId, dailyMessage)
+            }
+            if (withdrawalChatId.isNotBlank() && withdrawalChatId != depositChatId) {
+                sender.sendWithRetry(botToken, withdrawalChatId, dailyMessage)
+            }
+        }
+
+        Log.d(TAG, "Settlement sent (daily=$isDaily, deposit=${depositLogs.size}, withdrawal=${withdrawalLogs.size}, $timeRange)")
 
         // 정산 시간 업데이트
         settings.lastSettlementTimestamp = now
 
         // 오래된 로그 정리
         logDb.deleteOldLogs(settings.logRetentionDays)
+    }
+
+    private fun buildDailySummaryMessage(
+        depositLogs: List<LogEntry>,
+        withdrawalLogs: List<LogEntry>,
+        timeFormat: SimpleDateFormat,
+        timeRange: String,
+        dateStr: String,
+        deviceLabel: String
+    ): String {
+        val sb = StringBuilder()
+        sb.appendLine("\uD83D\uDCCB <b>[${deviceLabel}] [\uD83D\uDCC5 일일 종합] $dateStr</b>")
+        sb.appendLine("\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501")
+
+        // 입금 합계
+        val depositNormal = depositLogs.filter { it.transactionStatus == "정상" }
+        val depositAmount = depositNormal.sumOf { TelegramSender.parseAmountToLong(it.amount) }
+        val depositFailed = depositLogs.filter { it.transactionStatus == "실패" }
+        val depositCancelled = depositLogs.filter { it.transactionStatus == "취소" }
+
+        sb.appendLine("\uD83D\uDCB0 <b>입금 합계</b>")
+        sb.appendLine("  \u2705 정상: ${depositNormal.size}건 | ${TelegramSender.formatAmount(depositAmount)}원")
+        if (depositFailed.isNotEmpty()) {
+            val amt = depositFailed.sumOf { TelegramSender.parseAmountToLong(it.amount) }
+            sb.appendLine("  \u274C 실패: ${depositFailed.size}건 | ${TelegramSender.formatAmount(amt)}원")
+        }
+        if (depositCancelled.isNotEmpty()) {
+            val amt = depositCancelled.sumOf { TelegramSender.parseAmountToLong(it.amount) }
+            sb.appendLine("  \uD83D\uDEAB 취소: ${depositCancelled.size}건 | ${TelegramSender.formatAmount(amt)}원")
+        }
+        sb.appendLine()
+
+        // 출금 합계
+        val withdrawalNormal = withdrawalLogs.filter { it.transactionStatus == "정상" }
+        val withdrawalAmount = withdrawalNormal.sumOf { TelegramSender.parseAmountToLong(it.amount) }
+        val withdrawalFailed = withdrawalLogs.filter { it.transactionStatus == "실패" }
+        val withdrawalCancelled = withdrawalLogs.filter { it.transactionStatus == "취소" }
+
+        sb.appendLine("\uD83D\uDCB8 <b>출금 합계</b>")
+        sb.appendLine("  \u2705 정상: ${withdrawalNormal.size}건 | ${TelegramSender.formatAmount(withdrawalAmount)}원")
+        if (withdrawalFailed.isNotEmpty()) {
+            val amt = withdrawalFailed.sumOf { TelegramSender.parseAmountToLong(it.amount) }
+            sb.appendLine("  \u274C 실패: ${withdrawalFailed.size}건 | ${TelegramSender.formatAmount(amt)}원")
+        }
+        if (withdrawalCancelled.isNotEmpty()) {
+            val amt = withdrawalCancelled.sumOf { TelegramSender.parseAmountToLong(it.amount) }
+            sb.appendLine("  \uD83D\uDEAB 취소: ${withdrawalCancelled.size}건 | ${TelegramSender.formatAmount(amt)}원")
+        }
+
+        sb.appendLine("\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501")
+
+        // 순이익 (입금 - 출금)
+        val netAmount = depositAmount - withdrawalAmount
+        val netEmoji = if (netAmount >= 0) "\uD83D\uDCC8" else "\uD83D\uDCC9"
+        sb.appendLine("$netEmoji <b>순이익: ${TelegramSender.formatAmount(netAmount)}원</b>")
+
+        sb.appendLine("\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501")
+
+        // 전체 감지/전송 현황
+        val allLogs = depositLogs + withdrawalLogs
+        val totalDetected = allLogs.size
+        val totalSent = allLogs.count { it.telegramStatus == "성공" }
+        val checkmark = if (totalDetected == totalSent) "\u2705" else "\u26A0\uFE0F"
+        sb.appendLine("감지 ${totalDetected}건 중 전송 성공 ${totalSent}건 $checkmark")
+
+        return sb.toString()
     }
 
     private fun buildCombinedSettlementMessage(

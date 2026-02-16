@@ -18,9 +18,9 @@ object SettlementScheduler {
     fun scheduleDaily(context: Context) {
         val settings = SettingsManager(context)
 
-        // 23:30 정산 (기존)
+        // 23:30 정산 (일일 종합 포함)
         scheduleAlarm(context, settings.settlementHour, settings.settlementMinute,
-            REQUEST_SETTLEMENT, "settlement", SettlementReceiver::class.java)
+            REQUEST_SETTLEMENT, "settlement_daily", SettlementReceiver::class.java)
 
         // 6시간 간격 추가 정산
         val times = listOf(5 to 30, 11 to 30, 17 to 30)
