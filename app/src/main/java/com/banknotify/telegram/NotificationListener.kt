@@ -275,6 +275,9 @@ class NotificationListener : NotificationListenerService() {
     override fun onNotificationRemoved(sbn: StatusBarNotification) {}
 
     private fun saveRecentPackage(packageName: String, title: String, text: String) {
+        // 시스템 패키지 제외 (충전 알림 등)
+        if (packageName.startsWith("com.android.") || packageName.startsWith("android.") ||
+            packageName == "com.samsung.android.lool" || packageName == "com.sec.android.app.launcher") return
         try {
             val prefs = getSharedPreferences("debug_packages", MODE_PRIVATE)
             val existing = prefs.getString("recent", "") ?: ""
