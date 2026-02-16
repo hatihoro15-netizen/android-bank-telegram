@@ -5,7 +5,6 @@ import android.app.TimePickerDialog
 import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.Typeface
 import android.os.Bundle
@@ -15,12 +14,14 @@ import android.view.Gravity
 import android.view.View
 import android.widget.ArrayAdapter
 import android.widget.Button
-import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
+import android.widget.CheckBox
+import androidx.recyclerview.widget.GridLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -39,8 +40,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvServiceStatus: TextView
     private lateinit var switchDeposit: MaterialSwitch
     private lateinit var switchWithdrawal: MaterialSwitch
-    private lateinit var containerDepositMethods: LinearLayout
-    private lateinit var containerWithdrawalMethods: LinearLayout
+    private lateinit var gridDeposit: RecyclerView
+    private lateinit var gridWithdrawal: RecyclerView
+    private var depositAdapter: MethodGridAdapter? = null
+    private var withdrawalAdapter: MethodGridAdapter? = null
     private lateinit var etBotToken: EditText
     private lateinit var etDepositChatId: EditText
     private lateinit var etWithdrawalChatId: EditText
@@ -66,8 +69,10 @@ class MainActivity : AppCompatActivity() {
         tvServiceStatus = findViewById(R.id.tvServiceStatus)
         switchDeposit = findViewById(R.id.switchDeposit)
         switchWithdrawal = findViewById(R.id.switchWithdrawal)
-        containerDepositMethods = findViewById(R.id.containerDepositMethods)
-        containerWithdrawalMethods = findViewById(R.id.containerWithdrawalMethods)
+        gridDeposit = findViewById(R.id.gridDepositMethods)
+        gridWithdrawal = findViewById(R.id.gridWithdrawalMethods)
+        gridDeposit.layoutManager = GridLayoutManager(this, 2)
+        gridWithdrawal.layoutManager = GridLayoutManager(this, 2)
         etBotToken = findViewById(R.id.etBotToken)
         etDepositChatId = findViewById(R.id.etDepositChatId)
         etWithdrawalChatId = findViewById(R.id.etWithdrawalChatId)
@@ -127,20 +132,13 @@ class MainActivity : AppCompatActivity() {
         val deviceNumbers = (1..100).map { "${it}번" }
         spinnerDeviceNumber.adapter = ArrayAdapter(this,
             android.R.layout.simple_spinner_dropdown_item, deviceNumbers)
-        spinnerDeviceNumber.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: android.view.View?, position: Int, id: Long) {
-                settings.deviceNumber = position + 1
-            }
-            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
-        }
 
-        etDeviceName.addTextChangedListener(object : android.text.TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-            override fun afterTextChanged(s: android.text.Editable?) {
-                settings.deviceName = s?.toString()?.trim() ?: ""
-            }
-        })
+        // 디바이스 설정 저장 버튼
+        findViewById<Button>(R.id.btnSaveDevice).setOnClickListener {
+            settings.deviceNumber = spinnerDeviceNumber.selectedItemPosition + 1
+            settings.deviceName = etDeviceName.text.toString().trim()
+            Toast.makeText(this, "디바이스 설정이 저장되었습니다", Toast.LENGTH_SHORT).show()
+        }
 
         findViewById<Button>(R.id.btnEnableService).setOnClickListener {
             startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
@@ -154,20 +152,22 @@ class MainActivity : AppCompatActivity() {
             showAddMethodDialog(isDeposit = false)
         }
 
+        // 입금/출금 방식 저장 버튼
+        findViewById<Button>(R.id.btnSaveDepositMethods).setOnClickListener {
+            depositAdapter?.let { settings.depositMethods = it.getItems() }
+            Toast.makeText(this, "입금 수신 방식이 저장되었습니다", Toast.LENGTH_SHORT).show()
+        }
+        findViewById<Button>(R.id.btnSaveWithdrawalMethods).setOnClickListener {
+            withdrawalAdapter?.let { settings.withdrawalMethods = it.getItems() }
+            Toast.makeText(this, "출금 수신 방식이 저장되었습니다", Toast.LENGTH_SHORT).show()
+        }
+
         findViewById<Button>(R.id.btnChangeSettlementTime).setOnClickListener {
             showTimePicker()
         }
 
         findViewById<Button>(R.id.btnSave).setOnClickListener {
             saveSettings()
-        }
-
-        findViewById<Button>(R.id.btnTestDeposit).setOnClickListener {
-            sendTestMessage(isDeposit = true)
-        }
-
-        findViewById<Button>(R.id.btnTestWithdrawal).setOnClickListener {
-            sendTestMessage(isDeposit = false)
         }
 
         findViewById<Button>(R.id.btnViewLogs).setOnClickListener {
@@ -254,8 +254,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun refreshMethodViews() {
-        buildMethodViews(containerDepositMethods, settings.depositMethods, isDeposit = true)
-        buildMethodViews(containerWithdrawalMethods, settings.withdrawalMethods, isDeposit = false)
+        depositAdapter = MethodGridAdapter(settings.depositMethods.toMutableList(), isDeposit = true)
+        gridDeposit.adapter = depositAdapter
+        withdrawalAdapter = MethodGridAdapter(settings.withdrawalMethods.toMutableList(), isDeposit = false)
+        gridWithdrawal.adapter = withdrawalAdapter
     }
 
     private val methodIcons = mapOf(
@@ -271,108 +273,37 @@ class MainActivity : AppCompatActivity() {
         return methodIcons[name] ?: "\uD83D\uDCB1"
     }
 
-    private fun buildMethodViews(
-        container: LinearLayout,
-        methods: List<PaymentMethodItem>,
-        isDeposit: Boolean
-    ) {
-        container.removeAllViews()
+    inner class MethodGridAdapter(
+        private val methods: MutableList<PaymentMethodItem>,
+        private val isDeposit: Boolean
+    ) : RecyclerView.Adapter<MethodGridAdapter.VH>() {
 
-        val primaryColor = ContextCompat.getColor(this, R.color.primary)
-        val checkboxTint = ColorStateList(
-            arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf()),
-            intArrayOf(primaryColor, Color.parseColor("#9E9E9E"))
-        )
-
-        // 전체 선택/해제 토글
-        val selectAllRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dpToPx(4), dpToPx(4), dpToPx(4), dpToPx(8))
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            )
+        inner class VH(view: View) : RecyclerView.ViewHolder(view) {
+            val cb: CheckBox = view.findViewById(R.id.cbMethod)
+            val btnDel: TextView = view.findViewById(R.id.btnDelete)
         }
 
-        val allChecked = methods.all { it.enabled }
-        val selectAllCheckbox = CheckBox(this).apply {
-            text = "전체 선택"
-            isChecked = allChecked
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-            setTextColor(Color.parseColor("#616161"))
-            setTypeface(null, Typeface.BOLD)
-            buttonTintList = checkboxTint
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            )
+        override fun onCreateViewHolder(parent: android.view.ViewGroup, viewType: Int): VH {
+            val view = layoutInflater.inflate(R.layout.item_method_grid, parent, false)
+            return VH(view)
         }
-        selectAllCheckbox.setOnCheckedChangeListener { _, checked ->
-            for (i in 0 until container.childCount) {
-                val child = container.getChildAt(i)
-                if (child.tag == "method_row") {
-                    val row = child as LinearLayout
-                    val cb = row.findViewWithTag<CheckBox>("method_checkbox")
-                    cb?.isChecked = checked
-                }
+
+        override fun onBindViewHolder(holder: VH, position: Int) {
+            val item = methods[position]
+            holder.cb.text = "${getMethodIcon(item.name)} ${item.name}"
+            holder.cb.setOnCheckedChangeListener(null)
+            holder.cb.isChecked = item.enabled
+            holder.cb.setOnCheckedChangeListener { _, checked ->
+                methods[holder.adapterPosition] = methods[holder.adapterPosition].copy(enabled = checked)
+            }
+            holder.btnDel.setOnClickListener {
+                showDeleteMethodDialog(item.name, isDeposit)
             }
         }
-        selectAllRow.addView(selectAllCheckbox)
-        container.addView(selectAllRow)
 
-        container.addView(createDivider())
+        override fun getItemCount() = methods.size
 
-        methods.forEachIndexed { index, method ->
-            val row = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
-                setPadding(dpToPx(8), dpToPx(10), dpToPx(4), dpToPx(10))
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
-                )
-                tag = "method_row"
-            }
-
-            val iconView = TextView(this).apply {
-                text = getMethodIcon(method.name)
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
-                setPadding(0, 0, dpToPx(8), 0)
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
-                )
-            }
-
-            val checkbox = CheckBox(this).apply {
-                text = method.name
-                isChecked = method.enabled
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
-                setTextColor(Color.parseColor("#212121"))
-                buttonTintList = checkboxTint
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-                this.tag = "method_checkbox"
-            }
-
-            val deleteBtn = TextView(this).apply {
-                text = "\uD83D\uDDD1\uFE0F"
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
-                setPadding(dpToPx(12), dpToPx(6), dpToPx(8), dpToPx(6))
-                setOnClickListener {
-                    showDeleteMethodDialog(method.name, isDeposit)
-                }
-            }
-
-            row.addView(iconView)
-            row.addView(checkbox)
-            row.addView(deleteBtn)
-            container.addView(row)
-
-            if (index < methods.size - 1) {
-                container.addView(createDivider())
-            }
-        }
+        fun getItems(): List<PaymentMethodItem> = methods.toList()
     }
 
     private fun createDivider(): View {
@@ -473,33 +404,11 @@ class MainActivity : AppCompatActivity() {
         settings.depositEnabled = switchDeposit.isChecked
         settings.withdrawalEnabled = switchWithdrawal.isChecked
 
-        // 디바이스 설정
-        settings.deviceNumber = spinnerDeviceNumber.selectedItemPosition + 1
-        settings.deviceName = etDeviceName.text.toString().trim()
-
-        // 체크박스 상태 저장
-        saveMethodCheckboxes(containerDepositMethods, isDeposit = true)
-        saveMethodCheckboxes(containerWithdrawalMethods, isDeposit = false)
-
         // 정산 알람 스케줄
         SettlementScheduler.scheduleDaily(this)
         SettlementScheduler.scheduleWatchdog(this)
 
-        Toast.makeText(this, "설정이 저장되었습니다", Toast.LENGTH_SHORT).show()
-    }
-
-    private fun saveMethodCheckboxes(container: LinearLayout, isDeposit: Boolean) {
-        val updated = mutableListOf<PaymentMethodItem>()
-        for (i in 0 until container.childCount) {
-            val child = container.getChildAt(i)
-            if (child.tag != "method_row") continue
-            val row = child as? LinearLayout ?: continue
-            val checkbox = row.findViewWithTag<CheckBox>("method_checkbox") ?: continue
-            val methodName = checkbox.text.toString()
-            updated.add(PaymentMethodItem(methodName, checkbox.isChecked))
-        }
-        if (isDeposit) settings.depositMethods = updated
-        else settings.withdrawalMethods = updated
+        Toast.makeText(this, "텔레그램 설정이 저장되었습니다", Toast.LENGTH_SHORT).show()
     }
 
     private fun updateServiceStatus() {
@@ -547,47 +456,6 @@ class MainActivity : AppCompatActivity() {
         val cn = ComponentName(this, NotificationListener::class.java)
         val flat = Settings.Secure.getString(contentResolver, "enabled_notification_listeners")
         return flat?.contains(cn.flattenToString()) == true
-    }
-
-    private fun sendTestMessage(isDeposit: Boolean) {
-        val token = etBotToken.text.toString().trim()
-        val chatId = if (isDeposit) etDepositChatId.text.toString().trim()
-        else etWithdrawalChatId.text.toString().trim()
-        val typeLabel = if (isDeposit) "입금" else "출금"
-
-        if (token.isBlank() || chatId.isBlank()) {
-            Toast.makeText(this, "봇 토큰과 ${typeLabel} Chat ID를 입력해주세요", Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        Toast.makeText(this, "${typeLabel} 테스트 메시지 전송 중...", Toast.LENGTH_SHORT).show()
-
-        CoroutineScope(Dispatchers.Main).launch {
-            val sender = TelegramSender()
-            val deviceLabel = settings.getDeviceLabel()
-            val emoji = if (isDeposit) "\uD83D\uDCB0" else "\uD83D\uDCB8"
-            val message = """
-                <b>$emoji [$deviceLabel] [${typeLabel}] 테스트 메시지</b>
-
-                은행 알림 전송 앱이 정상적으로 연결되었습니다.
-                이 메시지가 보이면 ${typeLabel} 채팅방 설정이 올바릅니다.
-
-                디바이스: $deviceLabel
-                정산 시간: ${settings.settlementTime}
-                데이터 초기화: 23:55
-            """.trimIndent()
-
-            val result = sender.sendMessage(token, chatId, message)
-
-            withContext(Dispatchers.Main) {
-                if (result.isSuccess) {
-                    Toast.makeText(this@MainActivity, "${typeLabel} 테스트 전송 성공!", Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(this@MainActivity,
-                        "전송 실패: ${result.exceptionOrNull()?.message}", Toast.LENGTH_LONG).show()
-                }
-            }
-        }
     }
 
     private fun sendTestNotification(type: String) {

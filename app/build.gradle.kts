@@ -11,8 +11,8 @@ android {
         applicationId = "com.banknotify.telegram"
         minSdk = 26
         targetSdk = 34
-        versionCode = 12
-        versionName = "1.3.3"
+        versionCode = 13
+        versionName = "1.3.4"
     }
 
     buildTypes {

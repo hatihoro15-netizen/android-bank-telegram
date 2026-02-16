@@ -137,6 +137,11 @@
                         android:id="@+id/etDeviceName" android:layout_width="match_parent" android:layout_height="wrap_content"
                         android:inputType="text" android:textSize="13sp" />
                 </com.google.android.material.textfield.TextInputLayout>
+                <Button android:id="@+id/btnSaveDevice"
+                    android:layout_width="match_parent" android:layout_height="44dp"
+                    android:text="디바이스 설정 저장" android:textSize="13sp"
+                    android:layout_marginTop="10dp"
+                    android:backgroundTint="#1A237E" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
@@ -245,16 +250,26 @@
                 </LinearLayout>
                 <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
                     android:text="감지할 입금 방식을 선택하세요" android:textSize="11sp" android:textColor="#757575" android:layout_marginBottom="10dp" />
-                <LinearLayout android:id="@+id/containerDepositMethods"
-                    android:layout_width="match_parent" android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:background="@drawable/methods_container_bg"
-                    android:padding="4dp" />
-                <Button android:id="@+id/btnAddDepositMethod"
-                    android:layout_width="match_parent" android:layout_height="44dp"
-                    android:text="＋  입금 방식 추가" android:textSize="13sp"
-                    android:layout_marginTop="10dp"
-                    style="@style/Widget.Material3.Button.TonalButton" />
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/gridDepositMethods"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:nestedScrollingEnabled="false" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="horizontal" android:layout_marginTop="10dp">
+                    <Button android:id="@+id/btnSaveDepositMethods"
+                        android:layout_width="0dp" android:layout_height="44dp"
+                        android:layout_weight="1"
+                        android:text="저장" android:textSize="13sp"
+                        android:layout_marginEnd="4dp"
+                        android:backgroundTint="#1A237E" />
+                    <Button android:id="@+id/btnAddDepositMethod"
+                        android:layout_width="0dp" android:layout_height="44dp"
+                        android:layout_weight="1"
+                        android:text="＋ 추가" android:textSize="13sp"
+                        android:layout_marginStart="4dp"
+                        style="@style/Widget.Material3.Button.TonalButton" />
+                </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
@@ -284,16 +299,26 @@
                 </LinearLayout>
                 <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
                     android:text="감지할 출금 방식을 선택하세요" android:textSize="11sp" android:textColor="#757575" android:layout_marginBottom="10dp" />
-                <LinearLayout android:id="@+id/containerWithdrawalMethods"
-                    android:layout_width="match_parent" android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:background="@drawable/methods_container_bg"
-                    android:padding="4dp" />
-                <Button android:id="@+id/btnAddWithdrawalMethod"
-                    android:layout_width="match_parent" android:layout_height="44dp"
-                    android:text="＋  출금 방식 추가" android:textSize="13sp"
-                    android:layout_marginTop="10dp"
-                    style="@style/Widget.Material3.Button.TonalButton" />
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/gridWithdrawalMethods"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:nestedScrollingEnabled="false" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="horizontal" android:layout_marginTop="10dp">
+                    <Button android:id="@+id/btnSaveWithdrawalMethods"
+                        android:layout_width="0dp" android:layout_height="44dp"
+                        android:layout_weight="1"
+                        android:text="저장" android:textSize="13sp"
+                        android:layout_marginEnd="4dp"
+                        android:backgroundTint="#1A237E" />
+                    <Button android:id="@+id/btnAddWithdrawalMethod"
+                        android:layout_width="0dp" android:layout_height="44dp"
+                        android:layout_weight="1"
+                        android:text="＋ 추가" android:textSize="13sp"
+                        android:layout_marginStart="4dp"
+                        style="@style/Widget.Material3.Button.TonalButton" />
+                </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
@@ -338,17 +363,7 @@
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <Button android:id="@+id/btnSave" android:layout_width="match_parent" android:layout_height="wrap_content"
-                    android:text="설정 저장" android:backgroundTint="#1A237E" android:layout_marginBottom="6dp" />
-
-                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-                    android:orientation="horizontal">
-                    <Button android:id="@+id/btnTestDeposit" android:layout_width="0dp" android:layout_height="wrap_content"
-                        android:layout_weight="1" android:text="입금 테스트" android:layout_marginEnd="4dp"
-                        style="@style/Widget.Material3.Button.OutlinedButton" />
-                    <Button android:id="@+id/btnTestWithdrawal" android:layout_width="0dp" android:layout_height="wrap_content"
-                        android:layout_weight="1" android:text="출금 테스트" android:layout_marginStart="4dp"
-                        style="@style/Widget.Material3.Button.OutlinedButton" />
-                </LinearLayout>
+                    android:text="텔레그램 설정 저장" android:backgroundTint="#1A237E" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
