@@ -72,15 +72,11 @@ class SettlementReceiver : BroadcastReceiver() {
             depositLogs, withdrawalLogs, timeFormat, timeRange, dateStr, deviceLabel
         )
 
-        // 입금 채팅방에 전송
+        // 입금 채팅방에만 정산 전송
         val depositChatId = settings.depositChatId
-        val withdrawalChatId = settings.withdrawalChatId
 
         if (depositChatId.isNotBlank()) {
             sender.sendWithRetry(botToken, depositChatId, message)
-        }
-        if (withdrawalChatId.isNotBlank() && withdrawalChatId != depositChatId) {
-            sender.sendWithRetry(botToken, withdrawalChatId, message)
         }
 
         // 23:30 일일 종합 정산
@@ -102,9 +98,6 @@ class SettlementReceiver : BroadcastReceiver() {
 
             if (depositChatId.isNotBlank()) {
                 sender.sendWithRetry(botToken, depositChatId, dailyMessage)
-            }
-            if (withdrawalChatId.isNotBlank() && withdrawalChatId != depositChatId) {
-                sender.sendWithRetry(botToken, withdrawalChatId, dailyMessage)
             }
         }
 
@@ -173,12 +166,17 @@ class SettlementReceiver : BroadcastReceiver() {
 
         sb.appendLine("\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501")
 
-        // 전체 감지/전송 현황
+        // 전체 감지/전송 현황 (내부거래 제외)
         val allLogs = depositLogs + withdrawalLogs
-        val totalDetected = allLogs.size
-        val totalSent = allLogs.count { it.telegramStatus == "성공" }
+        val externalLogs = allLogs.filter { it.transactionStatus != "내부거래" }
+        val totalDetected = externalLogs.size
+        val totalSent = externalLogs.count { it.telegramStatus == "성공" }
+        val internalCount = allLogs.size - externalLogs.size
         val checkmark = if (totalDetected == totalSent) "\u2705" else "\u26A0\uFE0F"
         sb.appendLine("감지 ${totalDetected}건 중 전송 성공 ${totalSent}건 $checkmark")
+        if (internalCount > 0) {
+            sb.appendLine("(\uD83D\uDD04 내부거래 ${internalCount}건 제외)")
+        }
 
         return sb.toString()
     }
@@ -241,12 +239,17 @@ class SettlementReceiver : BroadcastReceiver() {
             sb.appendLine("\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501")
         }
 
-        // 전체 감지/전송 현황
+        // 전체 감지/전송 현황 (내부거래 제외)
         val allLogs = depositLogs + withdrawalLogs
-        val totalDetected = allLogs.size
-        val totalSent = allLogs.count { it.telegramStatus == "성공" }
+        val externalLogs = allLogs.filter { it.transactionStatus != "내부거래" }
+        val totalDetected = externalLogs.size
+        val totalSent = externalLogs.count { it.telegramStatus == "성공" }
+        val internalCount = allLogs.size - externalLogs.size
         val checkmark = if (totalDetected == totalSent) "\u2705" else "\u26A0\uFE0F"
         sb.appendLine("감지 ${totalDetected}건 중 전송 성공 ${totalSent}건 $checkmark")
+        if (internalCount > 0) {
+            sb.appendLine("(\uD83D\uDD04 내부거래 ${internalCount}건 제외)")
+        }
 
         return sb.toString()
     }

@@ -427,6 +427,46 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- 구글 시트 연동 -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="4dp"
+            app:strokeWidth="0dp">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="14dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="3dp">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="📊" android:textSize="18sp" android:layout_marginEnd="8dp" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="구글 시트 연동" android:textSize="16sp" android:textStyle="bold" android:textColor="#1A237E" />
+                </LinearLayout>
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="거래 감지 시 구글 시트에 자동 기록됩니다. 비워두면 미사용." android:textSize="11sp" android:textColor="#757575" android:layout_marginBottom="8dp" />
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:layout_marginBottom="6dp" android:hint="Google Apps Script URL">
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etGoogleSheetUrl" android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:inputType="textUri" android:textSize="12sp" />
+                </com.google.android.material.textfield.TextInputLayout>
+                <Button android:id="@+id/btnSaveGoogleSheet"
+                    android:layout_width="match_parent" android:layout_height="44dp"
+                    android:text="구글 시트 URL 저장" android:textSize="13sp"
+                    android:backgroundTint="#1A237E" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
         <!-- 정산 설정 -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"

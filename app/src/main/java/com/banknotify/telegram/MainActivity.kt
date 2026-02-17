@@ -57,6 +57,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvPushStatus: TextView
     private lateinit var switchExcludeInternal: MaterialSwitch
     private lateinit var switchSettlementEnabled: MaterialSwitch
+    private lateinit var etGoogleSheetUrl: EditText
     private lateinit var containerMyAccounts: LinearLayout
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -86,6 +87,7 @@ class MainActivity : AppCompatActivity() {
         tvPushStatus = findViewById(R.id.tvPushStatus)
         switchExcludeInternal = findViewById(R.id.switchExcludeInternal)
         switchSettlementEnabled = findViewById(R.id.switchSettlementEnabled)
+        etGoogleSheetUrl = findViewById(R.id.etGoogleSheetUrl)
         containerMyAccounts = findViewById(R.id.containerMyAccounts)
 
         // 포그라운드 서비스 시작 + 배터리 최적화 해제 요청
@@ -105,6 +107,11 @@ class MainActivity : AppCompatActivity() {
         }
         findViewById<Button>(R.id.btnAddAccount).setOnClickListener {
             showAddAccountDialog()
+        }
+        // 구글 시트 URL 저장
+        findViewById<Button>(R.id.btnSaveGoogleSheet).setOnClickListener {
+            settings.googleSheetUrl = etGoogleSheetUrl.text.toString().trim()
+            Toast.makeText(this, "구글 시트 URL이 저장되었습니다", Toast.LENGTH_SHORT).show()
         }
         findViewById<Button>(R.id.btnDiagnoseFilter).setOnClickListener {
             showFilterDiagnostic()
@@ -245,6 +252,9 @@ class MainActivity : AppCompatActivity() {
 
         // 내부거래 설정
         switchExcludeInternal.isChecked = settings.excludeInternalTransfers
+
+        // 구글 시트
+        etGoogleSheetUrl.setText(settings.googleSheetUrl)
 
         // 정산 설정
         switchSettlementEnabled.isChecked = settings.settlementEnabled

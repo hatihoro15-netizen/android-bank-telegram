@@ -256,7 +256,7 @@ class LogDatabase(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, D
         return logs
     }
 
-    fun isDuplicateInDb(amount: String, senderName: String, bankName: String, withinMinutes: Int = 5): Boolean {
+    fun isDuplicateInDb(amount: String, senderName: String, bankName: String, withinMinutes: Int = 1): Boolean {
         val cutoff = System.currentTimeMillis() - (withinMinutes * 60_000L)
         val db = readableDatabase
         val cursor = db.rawQuery(

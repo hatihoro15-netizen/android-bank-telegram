@@ -93,6 +93,11 @@ class SettingsManager(context: Context) {
         get() = prefs.getBoolean(KEY_SETTLEMENT_ENABLED, true)
         set(value) = prefs.edit().putBoolean(KEY_SETTLEMENT_ENABLED, value).apply()
 
+    // 구글 시트 웹훅 URL
+    var googleSheetUrl: String
+        get() = prefs.getString(KEY_GOOGLE_SHEET_URL, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_GOOGLE_SHEET_URL, value).apply()
+
 
     var myAccounts: List<MyAccountItem>
         get() {
@@ -142,6 +147,7 @@ class SettingsManager(context: Context) {
         private const val KEY_EXCLUDE_INTERNAL = "exclude_internal_transfers"
         private const val KEY_MY_ACCOUNTS = "my_accounts"
         private const val KEY_SETTLEMENT_ENABLED = "settlement_enabled"
+        private const val KEY_GOOGLE_SHEET_URL = "google_sheet_url"
 
         const val DEFAULT_BOT_TOKEN = "8322174657:AAHVc_-YECvt3vnqmAieSIkQ57X7qwFKEU4"
         const val DEFAULT_DEPOSIT_CHAT_ID = "-5120830461"

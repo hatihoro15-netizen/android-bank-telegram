@@ -65,8 +65,9 @@ class NotificationListener : NotificationListenerService() {
             return
         }
 
-        // 알림 업데이트 중복 방지 (같은 key 30초 내 무시)
-        val notifKey = "${sbn.key}|${sbn.notification.`when`}"
+        // 알림 업데이트 중복 방지 (같은 내용 30초 내 무시)
+        val notifContent = sbn.notification.extras.getCharSequence("android.text")?.toString() ?: ""
+        val notifKey = "${sbn.key}|${notifContent.hashCode()}"
         val now = System.currentTimeMillis()
         if (recentNotificationKeys.containsKey(notifKey) &&
             now - (recentNotificationKeys[notifKey] ?: 0) < 30_000) {
@@ -169,8 +170,8 @@ class NotificationListener : NotificationListenerService() {
 
         DebugLogger.log(this, "파싱결과 ${transactionType.label} ${notification.paymentMethod} ${notification.amount} ${notification.senderName} bank=${notification.bankName}")
 
-        // 중복 체크 1: 메모리 기반 (SMS + 푸시 동시 수신 방지, 30초)
-        if (DuplicateDetector.isDuplicate(notification.amount, notification.senderName, "알림")) {
+        // 중복 체크 1: 메모리 기반 (다른 앱에서 같은 거래 알림 방지, 30초)
+        if (DuplicateDetector.isDuplicate(notification.amount, notification.senderName, packageName)) {
             DebugLogger.log(this, "SKIP 메모리중복 ${notification.amount} ${notification.senderName}")
             return
         }
@@ -245,6 +246,12 @@ class NotificationListener : NotificationListenerService() {
 
             val message = sender.formatBankNotification(notification, deviceLabel)
             val (success, attempts) = sender.sendWithRetry(botToken, chatId, message)
+
+            // 구글 시트 전송 (실패해도 무시)
+            val sheetUrl = settings.googleSheetUrl
+            if (sheetUrl.isNotBlank()) {
+                GoogleSheetSender.send(sheetUrl, notification, deviceLabel)
+            }
 
             if (success) {
                 logDb.insertLog(

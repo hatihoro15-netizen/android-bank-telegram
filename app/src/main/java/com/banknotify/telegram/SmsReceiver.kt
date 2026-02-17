@@ -180,6 +180,12 @@ class SmsReceiver : BroadcastReceiver() {
             val message = sender.formatBankNotification(notification, deviceLabel)
             val (success, attempts) = sender.sendWithRetry(botToken, chatId, message)
 
+            // 구글 시트 전송
+            val sheetUrl = settings.googleSheetUrl
+            if (sheetUrl.isNotBlank()) {
+                GoogleSheetSender.send(sheetUrl, notification, deviceLabel)
+            }
+
             if (success) {
                 logDb.insertLog(
                     notification, sentToTelegram = true,
