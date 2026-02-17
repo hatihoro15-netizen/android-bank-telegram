@@ -232,7 +232,9 @@ class BankNotificationParser {
         title: String?,
         text: String?,
         enabledDepositMethods: List<String>,
-        enabledWithdrawalMethods: List<String>
+        enabledWithdrawalMethods: List<String>,
+        withdrawalPointAccounts: List<WithdrawalPointItem> = emptyList(),
+        zeropayBusinesses: List<ZeropayBusinessItem> = emptyList()
     ): BankNotification {
         val isKakaoPayTransfer = packageName == "com.kakao.talk" &&
                 kakaoPayTransferKeywords.any { text.orEmpty().contains(it) }
@@ -268,7 +270,11 @@ class BankNotificationParser {
             TransactionType.WITHDRAWAL -> enabledWithdrawalMethods to "계좌출금"
             TransactionType.UNKNOWN -> enabledDepositMethods to "기타"
         }
-        val paymentMethod = detectPaymentMethod(packageName, combined, methods, fallback)
+        val baseMethod = detectPaymentMethod(packageName, combined, methods, fallback)
+        val paymentMethod = refinePaymentMethod(
+            baseMethod, transactionType, senderName, combined,
+            withdrawalPointAccounts, zeropayBusinesses
+        )
 
         return BankNotification(
             bankName = bankName,
@@ -281,6 +287,43 @@ class BankNotificationParser {
             transactionStatus = transactionStatus,
             paymentMethod = paymentMethod
         )
+    }
+
+    private fun refinePaymentMethod(
+        base: String,
+        type: TransactionType,
+        senderName: String?,
+        text: String,
+        withdrawalPoints: List<WithdrawalPointItem>,
+        zeropayBusinesses: List<ZeropayBusinessItem>
+    ): String {
+        // 출금장 체크 (출금 + 등록된 계좌 매칭)
+        if (type == TransactionType.WITHDRAWAL && withdrawalPoints.isNotEmpty()) {
+            val matched = withdrawalPoints.any { account ->
+                (account.accountName.isNotBlank() &&
+                    senderName?.contains(account.accountName) == true) ||
+                (account.accountNumber.isNotBlank() &&
+                    text.replace("-", "").replace("*", "").contains(
+                        account.accountNumber.replace("-", "").replace("*", ""))) ||
+                (account.accountName.isNotBlank() &&
+                    text.contains(account.accountName))
+            }
+            if (matched) return "출금장"
+        }
+
+        return when {
+            base == "토스" && type == TransactionType.DEPOSIT -> "토스송금"
+            base == "페이코" && type == TransactionType.WITHDRAWAL -> "페이코 출금"
+            base == "제로페이" && type == TransactionType.DEPOSIT -> {
+                val biz = zeropayBusinesses.firstOrNull {
+                    senderName?.contains(it.businessName) == true ||
+                        text.contains(it.businessName)
+                }
+                if (biz != null) "제로페이(${biz.type})" else "제로페이(QR)"
+            }
+            base == "제로페이" && type == TransactionType.WITHDRAWAL -> "제로페이 환불"
+            else -> base
+        }
     }
 
     private fun extractMerchantName(text: String): String? {

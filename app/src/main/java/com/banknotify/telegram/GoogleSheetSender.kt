@@ -10,7 +10,7 @@ object GoogleSheetSender {
 
     private const val TAG = "GoogleSheetSender"
 
-    suspend fun send(webhookUrl: String, notification: BankNotification, deviceLabel: String) {
+    suspend fun send(webhookUrl: String, notification: BankNotification, deviceLabel: String, deviceNumber: Int = 1) {
         if (webhookUrl.isBlank()) return
 
         try {
@@ -24,6 +24,7 @@ object GoogleSheetSender {
                 put("transactionStatus", notification.transactionStatus.label)
                 put("paymentMethod", notification.paymentMethod)
                 put("deviceLabel", deviceLabel)
+                put("deviceNumber", deviceNumber)
                 put("source", notification.source)
             }
 

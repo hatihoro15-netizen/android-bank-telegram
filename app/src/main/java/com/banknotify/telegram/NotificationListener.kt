@@ -165,7 +165,9 @@ class NotificationListener : NotificationListenerService() {
 
         val notification = parser.parse(
             packageName, title, notificationText,
-            enabledDeposit, enabledWithdrawal
+            enabledDeposit, enabledWithdrawal,
+            settings.withdrawalPointAccounts,
+            settings.zeropayBusinesses
         ).copy(source = "알림")
 
         DebugLogger.log(this, "파싱결과 ${transactionType.label} ${notification.paymentMethod} ${notification.amount} ${notification.senderName} bank=${notification.bankName}")
@@ -250,7 +252,7 @@ class NotificationListener : NotificationListenerService() {
             // 구글 시트 전송 (실패해도 무시)
             val sheetUrl = settings.googleSheetUrl
             if (sheetUrl.isNotBlank()) {
-                GoogleSheetSender.send(sheetUrl, notification, deviceLabel)
+                GoogleSheetSender.send(sheetUrl, notification, deviceLabel, settings.deviceNumber)
             }
 
             if (success) {

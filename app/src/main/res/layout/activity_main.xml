@@ -467,6 +467,80 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- 출금장 계좌 관리 -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="4dp"
+            app:strokeWidth="0dp">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="14dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="3dp">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="💳" android:textSize="18sp" android:layout_marginEnd="8dp" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="출금장 계좌 관리" android:textSize="16sp" android:textStyle="bold" android:textColor="#1A237E" />
+                </LinearLayout>
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="등록된 계좌로 나가는 출금은 '출금장'으로 자동 분류됩니다" android:textSize="11sp" android:textColor="#757575" android:layout_marginBottom="8dp" />
+                <LinearLayout android:id="@+id/containerWithdrawalPoints"
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="vertical" android:background="@drawable/methods_container_bg"
+                    android:padding="4dp" android:layout_marginBottom="6dp" />
+                <Button android:id="@+id/btnAddWithdrawalPoint"
+                    android:layout_width="match_parent" android:layout_height="44dp"
+                    android:text="＋  출금장 계좌 추가" android:textSize="13sp"
+                    style="@style/Widget.Material3.Button.TonalButton" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 제로페이 업체 관리 -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="4dp"
+            app:strokeWidth="0dp">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="14dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="3dp">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="🏪" android:textSize="18sp" android:layout_marginEnd="8dp" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="제로페이 업체 관리" android:textSize="16sp" android:textStyle="bold" android:textColor="#1A237E" />
+                </LinearLayout>
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="등록된 업체명으로 제로페이 결제를 QR/스캔으로 자동 구분합니다" android:textSize="11sp" android:textColor="#757575" android:layout_marginBottom="8dp" />
+                <LinearLayout android:id="@+id/containerZeropayBusinesses"
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="vertical" android:background="@drawable/methods_container_bg"
+                    android:padding="4dp" android:layout_marginBottom="6dp" />
+                <Button android:id="@+id/btnAddZeropayBusiness"
+                    android:layout_width="match_parent" android:layout_height="44dp"
+                    android:text="＋  제로페이 업체 추가" android:textSize="13sp"
+                    style="@style/Widget.Material3.Button.TonalButton" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
         <!-- 정산 설정 -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"

@@ -59,6 +59,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var switchSettlementEnabled: MaterialSwitch
     private lateinit var etGoogleSheetUrl: EditText
     private lateinit var containerMyAccounts: LinearLayout
+    private lateinit var containerWithdrawalPoints: LinearLayout
+    private lateinit var containerZeropayBusinesses: LinearLayout
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -89,6 +91,8 @@ class MainActivity : AppCompatActivity() {
         switchSettlementEnabled = findViewById(R.id.switchSettlementEnabled)
         etGoogleSheetUrl = findViewById(R.id.etGoogleSheetUrl)
         containerMyAccounts = findViewById(R.id.containerMyAccounts)
+        containerWithdrawalPoints = findViewById(R.id.containerWithdrawalPoints)
+        containerZeropayBusinesses = findViewById(R.id.containerZeropayBusinesses)
 
         // 포그라운드 서비스 시작 + 배터리 최적화 해제 요청
         KeepAliveService.start(this)
@@ -115,6 +119,12 @@ class MainActivity : AppCompatActivity() {
         }
         findViewById<Button>(R.id.btnDiagnoseFilter).setOnClickListener {
             showFilterDiagnostic()
+        }
+        findViewById<Button>(R.id.btnAddWithdrawalPoint).setOnClickListener {
+            showAddWithdrawalPointDialog()
+        }
+        findViewById<Button>(R.id.btnAddZeropayBusiness).setOnClickListener {
+            showAddZeropayBusinessDialog()
         }
 
         // 감지 방식 토글
@@ -259,6 +269,8 @@ class MainActivity : AppCompatActivity() {
         // 정산 설정
         switchSettlementEnabled.isChecked = settings.settlementEnabled
         buildAccountViews()
+        buildWithdrawalPointViews()
+        buildZeropayBusinessViews()
 
         refreshMethodViews()
     }
@@ -817,6 +829,347 @@ class MainActivity : AppCompatActivity() {
                 containerMyAccounts.addView(createDivider())
             }
         }
+    }
+
+    // === 출금장 계좌 관리 ===
+
+    private fun buildWithdrawalPointViews() {
+        containerWithdrawalPoints.removeAllViews()
+        val accounts = settings.withdrawalPointAccounts
+        if (accounts.isEmpty()) {
+            val emptyText = TextView(this).apply {
+                text = "등록된 출금장 계좌가 없습니다"
+                setTextColor(Color.parseColor("#9E9E9E"))
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                gravity = Gravity.CENTER
+                setPadding(0, dpToPx(12), 0, dpToPx(12))
+            }
+            containerWithdrawalPoints.addView(emptyText)
+            return
+        }
+        accounts.forEachIndexed { index, account ->
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { setMargins(0, dpToPx(4), 0, dpToPx(4)) }
+                setPadding(dpToPx(8), dpToPx(6), dpToPx(8), dpToPx(6))
+            }
+            val infoLayout = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                setOnClickListener { showEditWithdrawalPointDialog(index) }
+            }
+            if (account.bankName.isNotBlank()) {
+                infoLayout.addView(TextView(this).apply {
+                    text = "\uD83C\uDFE6 ${account.bankName}"
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+                    setTypeface(null, Typeface.BOLD)
+                    setTextColor(Color.parseColor("#1A237E"))
+                })
+            }
+            val nameText = if (account.memo.isNotBlank()) "${account.accountName} (${account.memo})" else account.accountName
+            infoLayout.addView(TextView(this).apply {
+                text = "\uD83D\uDC64 $nameText"
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+                setTextColor(Color.parseColor("#212121"))
+            })
+            if (account.accountNumber.isNotBlank()) {
+                infoLayout.addView(TextView(this).apply {
+                    text = "\uD83D\uDCCB ${account.accountNumber}"
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                    setTextColor(Color.GRAY)
+                })
+            }
+            val deleteBtn = TextView(this).apply {
+                text = "\uD83D\uDDD1\uFE0F"
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+                setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
+                setOnClickListener {
+                    AlertDialog.Builder(this@MainActivity)
+                        .setTitle("출금장 계좌 삭제")
+                        .setMessage("'${account.accountName}'을(를) 삭제하시겠습니까?")
+                        .setPositiveButton("삭제") { _, _ ->
+                            val list = settings.withdrawalPointAccounts.toMutableList()
+                            list.removeAt(index)
+                            settings.withdrawalPointAccounts = list
+                            buildWithdrawalPointViews()
+                        }
+                        .setNegativeButton("취소", null)
+                        .show()
+                }
+            }
+            row.addView(infoLayout)
+            row.addView(deleteBtn)
+            containerWithdrawalPoints.addView(row)
+            if (index < accounts.size - 1) {
+                containerWithdrawalPoints.addView(createDivider())
+            }
+        }
+    }
+
+    private fun showAddWithdrawalPointDialog() {
+        val bankList = arrayOf("", "KB국민은행", "신한은행", "하나은행", "우리은행", "NH농협은행",
+            "카카오뱅크", "IBK기업은행", "SC제일은행", "씨티은행", "대구은행", "부산은행",
+            "경남은행", "광주은행", "전북은행", "제주은행", "KDB산업은행", "수협은행",
+            "우체국", "새마을금고", "신협", "카카오페이", "토스", "네이버페이", "페이코")
+
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dpToPx(24), dpToPx(16), dpToPx(24), dpToPx(8))
+        }
+        val spinnerBank = Spinner(this)
+        spinnerBank.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, bankList)
+        layout.addView(TextView(this).apply { text = "은행"; setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f) })
+        layout.addView(spinnerBank)
+
+        val etName = EditText(this).apply { hint = "수취인명 (예: 김영수)" }
+        layout.addView(etName)
+        val etNumber = EditText(this).apply { hint = "계좌번호 (선택)" }
+        layout.addView(etNumber)
+        val etMemo = EditText(this).apply { hint = "메모 (선택)" }
+        layout.addView(etMemo)
+
+        AlertDialog.Builder(this)
+            .setTitle("출금장 계좌 추가")
+            .setView(layout)
+            .setPositiveButton("추가") { _, _ ->
+                val name = etName.text.toString().trim()
+                if (name.isBlank()) {
+                    Toast.makeText(this, "수취인명을 입력하세요", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+                val item = WithdrawalPointItem(
+                    accountName = name,
+                    accountNumber = etNumber.text.toString().trim(),
+                    bankName = spinnerBank.selectedItem.toString(),
+                    memo = etMemo.text.toString().trim()
+                )
+                val list = settings.withdrawalPointAccounts.toMutableList()
+                list.add(item)
+                settings.withdrawalPointAccounts = list
+                buildWithdrawalPointViews()
+            }
+            .setNegativeButton("취소", null)
+            .show()
+    }
+
+    private fun showEditWithdrawalPointDialog(index: Int) {
+        val accounts = settings.withdrawalPointAccounts
+        if (index !in accounts.indices) return
+        val account = accounts[index]
+        val bankList = arrayOf("", "KB국민은행", "신한은행", "하나은행", "우리은행", "NH농협은행",
+            "카카오뱅크", "IBK기업은행", "SC제일은행", "씨티은행", "대구은행", "부산은행",
+            "경남은행", "광주은행", "전북은행", "제주은행", "KDB산업은행", "수협은행",
+            "우체국", "새마을금고", "신협", "카카오페이", "토스", "네이버페이", "페이코")
+
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dpToPx(24), dpToPx(16), dpToPx(24), dpToPx(8))
+        }
+        val spinnerBank = Spinner(this)
+        spinnerBank.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, bankList)
+        val bankIdx = bankList.indexOf(account.bankName)
+        if (bankIdx >= 0) spinnerBank.setSelection(bankIdx)
+        layout.addView(TextView(this).apply { text = "은행"; setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f) })
+        layout.addView(spinnerBank)
+
+        val etName = EditText(this).apply { setText(account.accountName); hint = "수취인명" }
+        layout.addView(etName)
+        val etNumber = EditText(this).apply { setText(account.accountNumber); hint = "계좌번호" }
+        layout.addView(etNumber)
+        val etMemo = EditText(this).apply { setText(account.memo); hint = "메모" }
+        layout.addView(etMemo)
+
+        AlertDialog.Builder(this)
+            .setTitle("출금장 계좌 수정")
+            .setView(layout)
+            .setPositiveButton("저장") { _, _ ->
+                val list = settings.withdrawalPointAccounts.toMutableList()
+                list[index] = WithdrawalPointItem(
+                    accountName = etName.text.toString().trim(),
+                    accountNumber = etNumber.text.toString().trim(),
+                    bankName = spinnerBank.selectedItem.toString(),
+                    memo = etMemo.text.toString().trim()
+                )
+                settings.withdrawalPointAccounts = list
+                buildWithdrawalPointViews()
+            }
+            .setNeutralButton("삭제") { _, _ ->
+                val list = settings.withdrawalPointAccounts.toMutableList()
+                list.removeAt(index)
+                settings.withdrawalPointAccounts = list
+                buildWithdrawalPointViews()
+            }
+            .setNegativeButton("취소", null)
+            .show()
+    }
+
+    // === 제로페이 업체 관리 ===
+
+    private fun buildZeropayBusinessViews() {
+        containerZeropayBusinesses.removeAllViews()
+        val businesses = settings.zeropayBusinesses
+        if (businesses.isEmpty()) {
+            val emptyText = TextView(this).apply {
+                text = "등록된 제로페이 업체가 없습니다"
+                setTextColor(Color.parseColor("#9E9E9E"))
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                gravity = Gravity.CENTER
+                setPadding(0, dpToPx(12), 0, dpToPx(12))
+            }
+            containerZeropayBusinesses.addView(emptyText)
+            return
+        }
+        businesses.forEachIndexed { index, biz ->
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { setMargins(0, dpToPx(4), 0, dpToPx(4)) }
+                setPadding(dpToPx(8), dpToPx(6), dpToPx(8), dpToPx(6))
+            }
+            val typeEmoji = if (biz.type == "QR") "\uD83D\uDCF1" else "\uD83D\uDCF7"
+            val infoLayout = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                setOnClickListener { showEditZeropayBusinessDialog(index) }
+            }
+            infoLayout.addView(TextView(this).apply {
+                text = "$typeEmoji ${biz.businessName}"
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+                setTextColor(Color.parseColor("#212121"))
+            })
+            infoLayout.addView(TextView(this).apply {
+                text = "  [${biz.type}]"
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                setTextColor(Color.parseColor("#1A237E"))
+                setTypeface(null, Typeface.BOLD)
+            })
+            val deleteBtn = TextView(this).apply {
+                text = "\uD83D\uDDD1\uFE0F"
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+                setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
+                setOnClickListener {
+                    AlertDialog.Builder(this@MainActivity)
+                        .setTitle("제로페이 업체 삭제")
+                        .setMessage("'${biz.businessName}'을(를) 삭제하시겠습니까?")
+                        .setPositiveButton("삭제") { _, _ ->
+                            val list = settings.zeropayBusinesses.toMutableList()
+                            list.removeAt(index)
+                            settings.zeropayBusinesses = list
+                            buildZeropayBusinessViews()
+                        }
+                        .setNegativeButton("취소", null)
+                        .show()
+                }
+            }
+            row.addView(infoLayout)
+            row.addView(deleteBtn)
+            containerZeropayBusinesses.addView(row)
+            if (index < businesses.size - 1) {
+                containerZeropayBusinesses.addView(createDivider())
+            }
+        }
+    }
+
+    private fun showAddZeropayBusinessDialog() {
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dpToPx(24), dpToPx(16), dpToPx(24), dpToPx(8))
+        }
+        val etName = EditText(this).apply { hint = "업체명 (예: 주식회사 하람)" }
+        layout.addView(etName)
+
+        val radioGroup = android.widget.RadioGroup(this).apply {
+            orientation = android.widget.RadioGroup.HORIZONTAL
+        }
+        val radioQR = android.widget.RadioButton(this).apply {
+            text = "QR (고객이 스캔)"
+            id = View.generateViewId()
+        }
+        val radioScan = android.widget.RadioButton(this).apply {
+            text = "스캔 (가맹점이 스캔)"
+            id = View.generateViewId()
+        }
+        radioGroup.addView(radioQR)
+        radioGroup.addView(radioScan)
+        radioQR.isChecked = true
+        layout.addView(radioGroup)
+
+        AlertDialog.Builder(this)
+            .setTitle("제로페이 업체 추가")
+            .setView(layout)
+            .setPositiveButton("추가") { _, _ ->
+                val name = etName.text.toString().trim()
+                if (name.isBlank()) {
+                    Toast.makeText(this, "업체명을 입력하세요", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+                val type = if (radioQR.isChecked) "QR" else "스캔"
+                val item = ZeropayBusinessItem(businessName = name, type = type)
+                val list = settings.zeropayBusinesses.toMutableList()
+                list.add(item)
+                settings.zeropayBusinesses = list
+                buildZeropayBusinessViews()
+            }
+            .setNegativeButton("취소", null)
+            .show()
+    }
+
+    private fun showEditZeropayBusinessDialog(index: Int) {
+        val businesses = settings.zeropayBusinesses
+        if (index !in businesses.indices) return
+        val biz = businesses[index]
+
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dpToPx(24), dpToPx(16), dpToPx(24), dpToPx(8))
+        }
+        val etName = EditText(this).apply { setText(biz.businessName); hint = "업체명" }
+        layout.addView(etName)
+
+        val radioGroup = android.widget.RadioGroup(this).apply {
+            orientation = android.widget.RadioGroup.HORIZONTAL
+        }
+        val radioQR = android.widget.RadioButton(this).apply {
+            text = "QR (고객이 스캔)"
+            id = View.generateViewId()
+        }
+        val radioScan = android.widget.RadioButton(this).apply {
+            text = "스캔 (가맹점이 스캔)"
+            id = View.generateViewId()
+        }
+        radioGroup.addView(radioQR)
+        radioGroup.addView(radioScan)
+        if (biz.type == "QR") radioQR.isChecked = true else radioScan.isChecked = true
+        layout.addView(radioGroup)
+
+        AlertDialog.Builder(this)
+            .setTitle("제로페이 업체 수정")
+            .setView(layout)
+            .setPositiveButton("저장") { _, _ ->
+                val list = settings.zeropayBusinesses.toMutableList()
+                list[index] = ZeropayBusinessItem(
+                    businessName = etName.text.toString().trim(),
+                    type = if (radioQR.isChecked) "QR" else "스캔"
+                )
+                settings.zeropayBusinesses = list
+                buildZeropayBusinessViews()
+            }
+            .setNeutralButton("삭제") { _, _ ->
+                val list = settings.zeropayBusinesses.toMutableList()
+                list.removeAt(index)
+                settings.zeropayBusinesses = list
+                buildZeropayBusinessViews()
+            }
+            .setNegativeButton("취소", null)
+            .show()
     }
 
     private fun showFilterDiagnostic() {

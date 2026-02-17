@@ -16,6 +16,18 @@ data class MyAccountItem(
     val memo: String = ""
 )
 
+data class WithdrawalPointItem(
+    val accountName: String,
+    val accountNumber: String = "",
+    val bankName: String = "",
+    val memo: String = ""
+)
+
+data class ZeropayBusinessItem(
+    val businessName: String,
+    val type: String  // "QR" 또는 "스캔"
+)
+
 class SettingsManager(context: Context) {
 
     private val prefs = context.getSharedPreferences("bank_notify_settings", Context.MODE_PRIVATE)
@@ -99,6 +111,22 @@ class SettingsManager(context: Context) {
         set(value) = prefs.edit().putString(KEY_GOOGLE_SHEET_URL, value).apply()
 
 
+    // 출금장 계좌
+    var withdrawalPointAccounts: List<WithdrawalPointItem>
+        get() {
+            val json = prefs.getString(KEY_WITHDRAWAL_POINTS, null) ?: return emptyList()
+            return deserializeWithdrawalPoints(json)
+        }
+        set(value) = prefs.edit().putString(KEY_WITHDRAWAL_POINTS, serializeWithdrawalPoints(value)).apply()
+
+    // 제로페이 업체
+    var zeropayBusinesses: List<ZeropayBusinessItem>
+        get() {
+            val json = prefs.getString(KEY_ZEROPAY_BUSINESSES, null) ?: return emptyList()
+            return deserializeZeropayBusinesses(json)
+        }
+        set(value) = prefs.edit().putString(KEY_ZEROPAY_BUSINESSES, serializeZeropayBusinesses(value)).apply()
+
     var myAccounts: List<MyAccountItem>
         get() {
             val json = prefs.getString(KEY_MY_ACCOUNTS, null) ?: return emptyList()
@@ -110,7 +138,8 @@ class SettingsManager(context: Context) {
         get() {
             val json = prefs.getString(KEY_DEPOSIT_METHODS, null) ?: return defaultDepositMethods()
             val list = deserializeMethods(json)
-            return list.ifEmpty { defaultDepositMethods() }
+            if (list.isEmpty()) return defaultDepositMethods()
+            return migrateDepositMethods(list)
         }
         set(value) = prefs.edit().putString(KEY_DEPOSIT_METHODS, serializeMethods(value)).apply()
 
@@ -118,9 +147,81 @@ class SettingsManager(context: Context) {
         get() {
             val json = prefs.getString(KEY_WITHDRAWAL_METHODS, null) ?: return defaultWithdrawalMethods()
             val list = deserializeMethods(json)
-            return list.ifEmpty { defaultWithdrawalMethods() }
+            if (list.isEmpty()) return defaultWithdrawalMethods()
+            return migrateWithdrawalMethods(list)
         }
         set(value) = prefs.edit().putString(KEY_WITHDRAWAL_METHODS, serializeMethods(value)).apply()
+
+    private fun migrateDepositMethods(list: List<PaymentMethodItem>): List<PaymentMethodItem> {
+        val migrated = list.toMutableList()
+        var changed = false
+
+        // "토스" → "토스송금"
+        val tosIdx = migrated.indexOfFirst { it.name == "토스" }
+        if (tosIdx >= 0) {
+            migrated[tosIdx] = migrated[tosIdx].copy(name = "토스송금")
+            changed = true
+        }
+
+        // "제로페이" → "제로페이(QR)" + "제로페이(스캔)" 추가
+        val zpIdx = migrated.indexOfFirst { it.name == "제로페이" }
+        if (zpIdx >= 0) {
+            val enabled = migrated[zpIdx].enabled
+            migrated[zpIdx] = PaymentMethodItem("제로페이(QR)", enabled)
+            if (migrated.none { it.name == "제로페이(스캔)" }) {
+                migrated.add(zpIdx + 1, PaymentMethodItem("제로페이(스캔)", enabled))
+            }
+            changed = true
+        }
+
+        // "네이버페이", "체크/카드" 제거 (입금에서 불필요)
+        if (migrated.removeAll { it.name == "네이버페이" || it.name == "체크/카드" }) {
+            changed = true
+        }
+
+        if (changed) {
+            depositMethods = migrated
+        }
+        return migrated
+    }
+
+    private fun migrateWithdrawalMethods(list: List<PaymentMethodItem>): List<PaymentMethodItem> {
+        val migrated = list.toMutableList()
+        var changed = false
+
+        // "페이코" → "페이코 출금"
+        val paycoIdx = migrated.indexOfFirst { it.name == "페이코" }
+        if (paycoIdx >= 0) {
+            migrated[paycoIdx] = migrated[paycoIdx].copy(name = "페이코 출금")
+            changed = true
+        }
+
+        // "제로페이" → "제로페이 환불"
+        val zpIdx = migrated.indexOfFirst { it.name == "제로페이" }
+        if (zpIdx >= 0) {
+            migrated[zpIdx] = migrated[zpIdx].copy(name = "제로페이 환불")
+            changed = true
+        }
+
+        // "토스", "카드결제" 제거 (출금에서 불필요)
+        if (migrated.removeAll { it.name == "토스" || it.name == "카드결제" }) {
+            changed = true
+        }
+
+        // "출금장" 없으면 추가
+        if (migrated.none { it.name == "출금장" }) {
+            val insertIdx = migrated.indexOfFirst { it.name == "계좌출금" }.let {
+                if (it >= 0) it else migrated.size
+            }
+            migrated.add(insertIdx, PaymentMethodItem("출금장"))
+            changed = true
+        }
+
+        if (changed) {
+            withdrawalMethods = migrated
+        }
+        return migrated
+    }
 
     fun getEnabledDepositMethodNames(): List<String> =
         depositMethods.filter { it.enabled }.map { it.name }
@@ -148,6 +249,8 @@ class SettingsManager(context: Context) {
         private const val KEY_MY_ACCOUNTS = "my_accounts"
         private const val KEY_SETTLEMENT_ENABLED = "settlement_enabled"
         private const val KEY_GOOGLE_SHEET_URL = "google_sheet_url"
+        private const val KEY_WITHDRAWAL_POINTS = "withdrawal_point_accounts"
+        private const val KEY_ZEROPAY_BUSINESSES = "zeropay_businesses"
 
         const val DEFAULT_BOT_TOKEN = "8322174657:AAHVc_-YECvt3vnqmAieSIkQ57X7qwFKEU4"
         const val DEFAULT_DEPOSIT_CHAT_ID = "-5120830461"
@@ -155,24 +258,22 @@ class SettingsManager(context: Context) {
         const val DEFAULT_SETTLEMENT_TIME = "23:30"
 
         fun defaultDepositMethods() = listOf(
-            PaymentMethodItem("계좌이체"),
             PaymentMethodItem("카카오페이"),
-            PaymentMethodItem("네이버페이"),
-            PaymentMethodItem("제로페이"),
-            PaymentMethodItem("토스"),
             PaymentMethodItem("연락처송금"),
-            PaymentMethodItem("체크/카드"),
+            PaymentMethodItem("토스송금"),
+            PaymentMethodItem("제로페이(QR)"),
+            PaymentMethodItem("제로페이(스캔)"),
+            PaymentMethodItem("계좌이체"),
             PaymentMethodItem("기타")
         )
 
         fun defaultWithdrawalMethods() = listOf(
-            PaymentMethodItem("계좌출금"),
             PaymentMethodItem("카카오페이"),
             PaymentMethodItem("네이버페이"),
-            PaymentMethodItem("제로페이"),
-            PaymentMethodItem("페이코"),
-            PaymentMethodItem("토스"),
-            PaymentMethodItem("카드결제"),
+            PaymentMethodItem("페이코 출금"),
+            PaymentMethodItem("제로페이 환불"),
+            PaymentMethodItem("출금장"),
+            PaymentMethodItem("계좌출금"),
             PaymentMethodItem("기타")
         )
 
@@ -222,6 +323,62 @@ class SettingsManager(context: Context) {
                         accountName = obj.optString("accountName", ""),
                         bankName = obj.optString("bankName", ""),
                         memo = obj.optString("memo", "")
+                    )
+                }
+            } catch (e: Exception) {
+                emptyList()
+            }
+        }
+
+        fun serializeWithdrawalPoints(items: List<WithdrawalPointItem>): String {
+            val arr = JSONArray()
+            items.forEach {
+                arr.put(JSONObject().apply {
+                    put("accountName", it.accountName)
+                    put("accountNumber", it.accountNumber)
+                    put("bankName", it.bankName)
+                    put("memo", it.memo)
+                })
+            }
+            return arr.toString()
+        }
+
+        fun deserializeWithdrawalPoints(json: String): List<WithdrawalPointItem> {
+            return try {
+                val arr = JSONArray(json)
+                (0 until arr.length()).map { i ->
+                    val obj = arr.getJSONObject(i)
+                    WithdrawalPointItem(
+                        accountName = obj.optString("accountName", ""),
+                        accountNumber = obj.optString("accountNumber", ""),
+                        bankName = obj.optString("bankName", ""),
+                        memo = obj.optString("memo", "")
+                    )
+                }
+            } catch (e: Exception) {
+                emptyList()
+            }
+        }
+
+        fun serializeZeropayBusinesses(items: List<ZeropayBusinessItem>): String {
+            val arr = JSONArray()
+            items.forEach {
+                arr.put(JSONObject().apply {
+                    put("businessName", it.businessName)
+                    put("type", it.type)
+                })
+            }
+            return arr.toString()
+        }
+
+        fun deserializeZeropayBusinesses(json: String): List<ZeropayBusinessItem> {
+            return try {
+                val arr = JSONArray(json)
+                (0 until arr.length()).map { i ->
+                    val obj = arr.getJSONObject(i)
+                    ZeropayBusinessItem(
+                        businessName = obj.optString("businessName", ""),
+                        type = obj.optString("type", "QR")
                     )
                 }
             } catch (e: Exception) {

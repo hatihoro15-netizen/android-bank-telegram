@@ -104,7 +104,9 @@ class SmsReceiver : BroadcastReceiver() {
 
         val notification = parser.parse(
             "sms:$senderAddress", null, body,
-            enabledDeposit, enabledWithdrawal
+            enabledDeposit, enabledWithdrawal,
+            settings.withdrawalPointAccounts,
+            settings.zeropayBusinesses
         ).copy(bankName = bankName, source = "SMS")
 
         // 중복 체크 1: 메모리 기반 (SMS + 푸시 동시 수신 방지, 30초)
@@ -183,7 +185,7 @@ class SmsReceiver : BroadcastReceiver() {
             // 구글 시트 전송
             val sheetUrl = settings.googleSheetUrl
             if (sheetUrl.isNotBlank()) {
-                GoogleSheetSender.send(sheetUrl, notification, deviceLabel)
+                GoogleSheetSender.send(sheetUrl, notification, deviceLabel, settings.deviceNumber)
             }
 
             if (success) {
