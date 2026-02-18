@@ -1,5 +1,6 @@
 package com.banknotify.telegram
 
+import android.content.Context
 import android.util.Log
 import org.json.JSONObject
 import java.io.OutputStreamWriter
@@ -10,8 +11,11 @@ object GoogleSheetSender {
 
     private const val TAG = "GoogleSheetSender"
 
-    suspend fun send(webhookUrl: String, notification: BankNotification, deviceLabel: String, deviceNumber: Int = 1) {
-        if (webhookUrl.isBlank()) return
+    suspend fun send(context: Context, webhookUrl: String, notification: BankNotification, deviceLabel: String, deviceNumber: Int = 1) {
+        if (webhookUrl.isBlank()) {
+            DebugLogger.log(context, "시트: URL 비어있음 → 스킵")
+            return
+        }
 
         try {
             val json = JSONObject().apply {
@@ -29,13 +33,15 @@ object GoogleSheetSender {
             }
 
             val body = json.toString()
-            postWithRedirect(webhookUrl, body)
+            DebugLogger.log(context, "시트: 전송시도 ${notification.amount} ${notification.senderName} → ${webhookUrl.take(60)}...")
+            postWithRedirect(context, webhookUrl, body)
         } catch (e: Exception) {
             Log.e(TAG, "Google Sheet send failed: ${e.message}")
+            DebugLogger.log(context, "시트: 전송실패 ${e.message}")
         }
     }
 
-    private fun postWithRedirect(targetUrl: String, body: String, maxRedirects: Int = 5) {
+    private fun postWithRedirect(context: Context, targetUrl: String, body: String, maxRedirects: Int = 5) {
         var url = targetUrl
         var redirectCount = 0
 
@@ -56,22 +62,24 @@ object GoogleSheetSender {
                 val redirectUrl = conn.getHeaderField("Location")
                 conn.disconnect()
                 if (redirectUrl.isNullOrBlank()) {
-                    Log.e(TAG, "Redirect with no Location header")
+                    DebugLogger.log(context, "시트: 리다이렉트인데 Location 없음")
                     return
                 }
                 url = redirectUrl
                 redirectCount++
-                Log.d(TAG, "Redirect $redirectCount → $url")
+                DebugLogger.log(context, "시트: 리다이렉트 $redirectCount → ${url.take(60)}")
             } else {
                 if (responseCode in 200..299) {
                     Log.d(TAG, "Google Sheet sent OK ($responseCode)")
+                    DebugLogger.log(context, "시트: 전송성공 ($responseCode)")
                 } else {
                     Log.w(TAG, "Google Sheet error: $responseCode")
+                    DebugLogger.log(context, "시트: 에러 $responseCode")
                 }
                 conn.disconnect()
                 return
             }
         }
-        Log.e(TAG, "Too many redirects")
+        DebugLogger.log(context, "시트: 리다이렉트 초과 ($maxRedirects)")
     }
 }

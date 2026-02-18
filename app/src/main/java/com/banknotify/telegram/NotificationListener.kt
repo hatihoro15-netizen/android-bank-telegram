@@ -252,7 +252,7 @@ class NotificationListener : NotificationListenerService() {
             // 구글 시트 전송 (실패해도 무시)
             val sheetUrl = settings.googleSheetUrl
             if (sheetUrl.isNotBlank()) {
-                GoogleSheetSender.send(sheetUrl, notification, deviceLabel, settings.deviceNumber)
+                GoogleSheetSender.send(this@NotificationListener, sheetUrl, notification, deviceLabel, settings.deviceNumber)
             }
 
             if (success) {

@@ -185,7 +185,7 @@ class SmsReceiver : BroadcastReceiver() {
             // 구글 시트 전송
             val sheetUrl = settings.googleSheetUrl
             if (sheetUrl.isNotBlank()) {
-                GoogleSheetSender.send(sheetUrl, notification, deviceLabel, settings.deviceNumber)
+                GoogleSheetSender.send(context, sheetUrl, notification, deviceLabel, settings.deviceNumber)
             }
 
             if (success) {
