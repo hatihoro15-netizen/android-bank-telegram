@@ -103,8 +103,13 @@ class BankNotificationParser {
         "카카오페이" to listOf("카카오페이", "카카오머니", "카카오송금"),
         "네이버페이" to listOf("네이버페이", "N페이", "네이버 페이"),
         "제로페이" to listOf("제로페이"),
+        "제로페이(QR)" to listOf("제로페이"),
+        "제로페이(스캔)" to listOf("제로페이"),
+        "제로페이 환불" to listOf("제로페이"),
         "페이코" to listOf("페이코", "PAYCO"),
+        "페이코 출금" to listOf("페이코", "PAYCO"),
         "토스" to listOf("토스머니", "토스송금", "토스입금", "토스"),
+        "토스송금" to listOf("토스머니", "토스송금", "토스입금", "토스"),
         "연락처송금" to listOf("연락처송금", "연락처 송금", "연락처"),
         "체크/카드" to listOf("체크카드", "카드결제", "카드승인", "신용카드"),
         "카드결제" to listOf("체크카드", "카드결제", "카드승인", "신용카드")
@@ -215,6 +220,9 @@ class BankNotificationParser {
         }
         packagePaymentMethod[packageName]?.let { pkgMethod ->
             if (pkgMethod in enabledMethods) return pkgMethod
+            // 새 이름으로 매칭 시도 (예: "페이코" → "페이코 출금")
+            enabledMethods.firstOrNull { methodKeywords[it] == methodKeywords[pkgMethod] && it != pkgMethod }
+                ?.let { return it }
         }
         // 카카오톡으로 온 카카오페이 송금
         if (packageName == "com.kakao.talk" &&
