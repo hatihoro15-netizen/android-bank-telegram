@@ -15,9 +15,15 @@ android {
         versionName = "1.5.1"
     }
 
+    signingConfigs {
+        getByName("debug") {
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("debug")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
