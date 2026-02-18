@@ -15,9 +15,16 @@ android {
         versionName = "1.5.1"
     }
 
+    signingConfigs {
+        getByName("debug") {
+            // 기본 debug keystore 사용
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("debug")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
