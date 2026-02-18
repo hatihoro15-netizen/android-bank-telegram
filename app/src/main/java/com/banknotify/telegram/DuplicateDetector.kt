@@ -3,32 +3,24 @@ package com.banknotify.telegram
 object DuplicateDetector {
 
     private const val DEDUP_WINDOW_MS = 30_000L // 30초
-    private const val CROSS_APP_WINDOW_MS = 10_000L // 10초: 크로스앱 이중 알림
-
-    // 카카오 생태계: 카카오뱅크 알림 + 카카오톡 알림이 동시에 올 수 있음
-    private val knownEcosystemPairs = listOf(
-        setOf("com.kakaobank.channel", "com.kakao.talk"),
-        setOf("com.kakaopay.app", "com.kakao.talk")
-    )
+    private const val CROSS_APP_WINDOW_MS = 10_000L // 10초
 
     private data class RecentTransaction(
         val timestamp: Long,
         val amount: String,
         val senderName: String?,
         val source: String,
-        var matched: Boolean = false // 이미 크로스앱 중복으로 매칭됨
+        var matched: Boolean = false
     )
 
     private val recentList = mutableListOf<RecentTransaction>()
 
     /**
-     * 중복 여부 체크 (스마트 버전).
+     * 중복 여부 체크.
      *
-     * 1. 같은 소스에서 온 동일 금액+이름 → 중복 아님 (동시 입금 가능)
-     * 2. 다른 소스에서 온 동일 금액+이름 → 중복 (이중 알림)
-     * 3. 다른 소스, 같은 금액, 이름 유사 (마스킹 패턴) → 중복 (김*동 ↔ 김서동)
-     * 4. 카카오 생태계 페어, 같은 금액 10초 이내 → 중복 (닉네임 케이스: 김*우 ↔ ㅊ○)
-     * 5. 그 외 다른 소스, 같은 금액, 이름 다름 → 중복 아님 (다른 사람)
+     * 1. 다른 소스에서 온 동일 금액+이름 → 중복
+     * 2. 다른 소스, 같은 금액, 이름 유사 (김*동 ↔ 김서동) → 중복
+     * 3. 그 외 → 중복 아님 (다른 사람 보호)
      */
     @Synchronized
     fun isDuplicate(amount: String?, senderName: String?, source: String): Boolean {
@@ -37,7 +29,7 @@ object DuplicateDetector {
         if (amount.isNullOrBlank()) return false
         val now = System.currentTimeMillis()
 
-        // 체크 1+2: 정확히 같은 금액+이름
+        // 체크 1: 정확히 같은 금액+이름, 다른 소스
         val exactMatch = recentList.find { record ->
             !record.matched &&
             record.amount == amount &&
@@ -50,30 +42,17 @@ object DuplicateDetector {
             return true
         }
 
-        // 체크 3: 같은 금액, 이름이 유사 (마스킹 패턴 매칭)
+        // 체크 2: 같은 금액, 이름 유사 (마스킹 패턴), 다른 소스
         val similarNameMatch = recentList.find { record ->
             !record.matched &&
             record.amount == amount &&
             record.source != source &&
-            record.senderName != senderName && // 이름이 다르지만
+            record.senderName != senderName &&
             (now - record.timestamp) < CROSS_APP_WINDOW_MS &&
-            areNamesSimilar(record.senderName, senderName) // 유사함
+            areNamesSimilar(record.senderName, senderName)
         }
         if (similarNameMatch != null) {
             similarNameMatch.matched = true
-            return true
-        }
-
-        // 체크 4: 카카오 생태계 페어 (닉네임 케이스 - 이름 매칭 불가능)
-        val ecosystemMatch = recentList.find { record ->
-            !record.matched &&
-            record.amount == amount &&
-            record.source != source &&
-            (now - record.timestamp) < CROSS_APP_WINDOW_MS &&
-            isKnownEcosystemPair(record.source, source)
-        }
-        if (ecosystemMatch != null) {
-            ecosystemMatch.matched = true
             return true
         }
 
@@ -107,22 +86,12 @@ object DuplicateDetector {
         val (masked, full) = when {
             n1.contains("*") || n1.contains("\u25CB") -> n1 to n2
             n2.contains("*") || n2.contains("\u25CB") -> n2 to n1
-            else -> return false // 둘 다 마스킹 아니면 비교 불가
+            else -> return false
         }
 
         if (masked.length < 2 || full.length < 2) return false
 
-        // 첫글자 + 끝글자 비교
         return masked.first() == full.first() && masked.last() == full.last()
-    }
-
-    /**
-     * 알려진 생태계 페어인지 체크 (예: 카카오뱅크 + 카카오톡).
-     */
-    private fun isKnownEcosystemPair(source1: String, source2: String): Boolean {
-        return knownEcosystemPairs.any { pair ->
-            pair.contains(source1) && pair.contains(source2)
-        }
     }
 
     @Synchronized
