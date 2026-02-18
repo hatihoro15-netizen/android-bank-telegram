@@ -341,11 +341,24 @@ class BankNotificationParser {
         return match?.groupValues?.get(1)?.trim()
     }
 
+    private val nonNameWords = setOf(
+        "입금", "출금", "이체", "결제", "승인", "취소", "완료", "실패",
+        "확인", "알림", "안내", "처리", "통장", "계좌", "카드"
+    )
+
     private fun extractSenderName(text: String, amount: String?): String? {
         if (amount != null) {
             val afterAmount = text.substringAfter(amount).trim()
-            val nameMatch = Regex("""^[\s]*([가-힣]{2,5})""").find(afterAmount)
-            if (nameMatch != null) return nameMatch.groupValues[1]
+
+            // 패턴 1: "입금 최창덕 → ..." (거래 키워드 뒤에 이름)
+            val keywordThenName = Regex("""^[\s]*(?:입금|출금|이체|결제|승인)\s+([가-힣]{2,5})""").find(afterAmount)
+            if (keywordThenName != null) return keywordThenName.groupValues[1]
+
+            // 패턴 2: "최창덕 → ..." (금액 바로 뒤에 이름)
+            val directName = Regex("""^[\s]*([가-힣]{2,5})""").find(afterAmount)
+            if (directName != null && directName.groupValues[1] !in nonNameWords) {
+                return directName.groupValues[1]
+            }
         }
         val fromPattern = Regex("""([가-힣]{2,5})님""").find(text)
         if (fromPattern != null) return fromPattern.groupValues[1]
