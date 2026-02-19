@@ -2,6 +2,8 @@ package com.banknotify.telegram
 
 import android.content.Context
 import android.util.Log
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
@@ -34,7 +36,9 @@ object GoogleSheetSender {
 
             val body = json.toString()
             DebugLogger.log(context, "시트: 전송시도 ${notification.amount} ${notification.senderName} → ${webhookUrl.take(60)}...")
-            postWithRedirect(context, webhookUrl, body)
+            withContext(Dispatchers.IO) {
+                postWithRedirect(context, webhookUrl, body)
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Google Sheet send failed: ${e.message}")
             DebugLogger.log(context, "시트: 전송실패 ${e.message}")
