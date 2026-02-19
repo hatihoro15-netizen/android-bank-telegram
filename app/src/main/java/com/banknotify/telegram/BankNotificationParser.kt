@@ -360,9 +360,12 @@ class BankNotificationParser {
                 return directName.groupValues[1]
             }
         }
-        val fromPattern = Regex("""([가-힣]{2,5})님""").find(text)
+        // 패턴 3: "최창덕님" 또는 "오*원 님" (마스킹 이름 포함)
+        val fromPattern = Regex("""([가-힣]{2,5})\s*님""").find(text)
         if (fromPattern != null) return fromPattern.groupValues[1]
-        val labelPattern = Regex("""(?:보낸\s*분|입금자|보내신\s*분)\s*[:\s]\s*([가-힣]{2,5})""").find(text)
+        val maskedFromPattern = Regex("""([가-힣][*○][가-힣])\s*님""").find(text)
+        if (maskedFromPattern != null) return maskedFromPattern.groupValues[1]
+        val labelPattern = Regex("""(?:보낸\s*분|입금자|보내신\s*분)\s*[:\s]\s*([가-힣*○]{2,5})""").find(text)
         if (labelPattern != null) return labelPattern.groupValues[1]
         return null
     }
