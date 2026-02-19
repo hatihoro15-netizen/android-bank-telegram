@@ -3,7 +3,8 @@ package com.banknotify.telegram
 object DuplicateDetector {
 
     private const val DEDUP_WINDOW_MS = 30_000L // 30초
-    private const val CROSS_APP_WINDOW_MS = 10_000L // 10초
+    private const val CROSS_APP_WINDOW_MS = 10_000L // 10초: 이름 유사도 매칭
+    private const val ECOSYSTEM_WINDOW_MS = 60_000L // 60초: 카카오 생태계 페어
 
     private val knownEcosystemPairs = listOf(
         setOf("com.kakaobank.channel", "com.kakao.talk"),
@@ -67,7 +68,7 @@ object DuplicateDetector {
             !record.matched &&
             record.amount == amount &&
             record.source != source &&
-            (now - record.timestamp) < CROSS_APP_WINDOW_MS &&
+            (now - record.timestamp) < ECOSYSTEM_WINDOW_MS &&
             isKnownEcosystemPair(record.source, source)
         }
         if (ecosystemMatch != null) {
